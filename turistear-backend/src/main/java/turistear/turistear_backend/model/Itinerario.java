@@ -47,7 +47,6 @@ public class Itinerario {
     private Usuario usuario;
 
     @OneToMany(mappedBy = "itinerario", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnore
     private List<Actividad> actividades;
 
     @OneToOne(mappedBy = "itinerario")
