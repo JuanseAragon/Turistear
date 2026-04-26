@@ -20,7 +20,7 @@ public interface ItinerarioRepository extends JpaRepository<Itinerario, Long> {
         SELECT i FROM Itinerario i
         LEFT JOIN i.usuariosQueLoFavoritearon u
         WHERE i.esPublico = true
-        GROUP BY i.id
+        GROUP BY i.idItinerario
         ORDER BY COUNT(u) DESC
     """)
     Set<Itinerario> rankingPublicaciones();
