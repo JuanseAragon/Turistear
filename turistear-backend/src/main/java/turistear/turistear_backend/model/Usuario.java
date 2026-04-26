@@ -42,6 +42,9 @@ public class Usuario {
     @Column(nullable = false)
     private TipoTema tema;
 
+    @Column(name = "foto_perfil")
+    private String fotoPerfil;
+
     @OneToMany(mappedBy = "creador")
     private Set<Itinerario> mis_itinerarios = new HashSet<>();
 
@@ -52,15 +55,6 @@ public class Usuario {
             joinColumns = @JoinColumn(name = "usuario_id"),
             inverseJoinColumns = @JoinColumn(name = "itinerario_id"))
     private Set<Itinerario> favoritos = new HashSet<>();
-
-//    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true)
-//    @JsonIgnore
-//    private List<Itinerario> itinerarios;
-//
-//    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true)
-//    @JsonIgnore
-//    private List<Publicacion> publicaciones;
-
 
     public Long getIdUsuario() {
         return idUsuario;
