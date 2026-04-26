@@ -4,14 +4,12 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import turistear.turistear_backend.dto.RequestGeneration;
-import turistear.turistear_backend.dto.RequestUpdateItinerary;
-import turistear.turistear_backend.dto.ResponseGeneration;
+import turistear.turistear_backend.dto.ItinerarioDTO;
+import turistear.turistear_backend.dto.ItinerarioRequest;
 import turistear.turistear_backend.model.Itinerario;
-import turistear.turistear_backend.service.itinerario.ItinerarioService;
+import turistear.turistear_backend.service.ServiceItinerario;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/itinerario")
@@ -20,38 +18,52 @@ public class ControllerItinerary {
     @Autowired
     private ItinerarioService itinerarioService;
 
-    @GetMapping("/{id}")
-    public ResponseEntity<?> getItineraryById(@PathVariable Long id) {
-        Optional<Itinerario> itinerario = this.itinerarioService.getItinerarioById(id);
-        return itinerario.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+    private final ServiceItinerario serviceItinerario;
+
+    public ControllerItinerary(ServiceItinerario serviceItinerario){
+        this.serviceItinerario = serviceItinerario;
     }
 
-    @GetMapping
-    public ResponseEntity<?> getAllItineraries() {
-        List<Itinerario> itinerarios = this.itinerarioService.getPublicItinerarios();
-        return ResponseEntity.ok(itinerarios);
+    @PostMapping
+    public Itinerario crearItinerario(@RequestBody ItinerarioRequest request) {
+        return serviceItinerario.crearItinerario(request);
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updateItinerary(@PathVariable Long id, @Valid @RequestBody RequestUpdateItinerary request) {
-        Optional<Itinerario> updatedItinerario = this.itinerarioService.updateItinerary(id, request);
-        return updatedItinerario.map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+    @GetMapping("/itinerarios")
+    public Set<ItinerarioDTO> getItinerariosDeUsuario(@RequestParam Long id_usuario) {
+
+        return serviceItinerario.obtenerItinerariosPorUsuario(id_usuario);
     }
 
-    @PostMapping("/generate")
-    public ResponseEntity<?> generateItinerary(@Valid @RequestBody RequestGeneration prompt) {
-        ResponseGeneration response = this.itinerarioService.generate(prompt);
-        return ResponseEntity.ok(response);
+    @GetMapping("/itinerarios/favoritos")
+    public Set<ItinerarioDTO> getItinerariosFavoritos(@RequestParam Long id_usuario){
+        return serviceItinerario.getItinerariosFavoritos(id_usuario);
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteItinerary(@PathVariable Long id) {
-        boolean deleted = this.itinerarioService.deleteItinerarioById(id);
-        if (!deleted) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.noContent().build();
-    }
+//    @GetMapping("/{id}")
+//    public ResponseEntity<?> getItineraryById() {
+//        return ResponseEntity.ok().build();
+//    }
+//
+//    @GetMapping
+//    public ResponseEntity<?> getAllItineraries() {
+//        return ResponseEntity.ok().build();
+//    }
+//
+//    @PutMapping("/{id}")
+//    public ResponseEntity<?> updateItinerary() {
+//        return ResponseEntity.ok().build();
+//    }
+//
+//    @PostMapping("/generate")
+//    public ResponseEntity<?> generateItinerary() {
+//        return ResponseEntity.ok().build();
+//    }
+//
+//    @DeleteMapping("/{id}")
+//    public ResponseEntity<?> deleteItinerary() {
+//        return ResponseEntity.ok().build();
+//    }
+
 
 }
