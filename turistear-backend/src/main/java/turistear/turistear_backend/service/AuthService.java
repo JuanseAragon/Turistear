@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import turistear.turistear_backend.dto.*;
+import turistear.turistear_backend.enumerable.TipoTema;
 import turistear.turistear_backend.model.Usuario;
 import turistear.turistear_backend.repository.UsuarioRepository;
 
@@ -38,6 +39,7 @@ public class AuthService {
                 .email(request.getEmail())
                 .contrasenia(passwordEncoder.encode(request.getContrasenia()))
                 .fechaNacimiento(request.getFechaNacimiento())
+                .tema(TipoTema.CLARO)
                 .build();
 
         usuario = usuarioRepository.save(usuario);

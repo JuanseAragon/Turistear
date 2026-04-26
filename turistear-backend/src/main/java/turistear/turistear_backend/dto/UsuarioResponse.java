@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import turistear.turistear_backend.enumerable.TipoTema;
 
 import java.time.LocalDate;
 
@@ -17,5 +18,5 @@ public class UsuarioResponse {
     private String nombre;
     private String email;
     private LocalDate fechaNacimiento;
-    private String tema;
+    private TipoTema tema;
 }

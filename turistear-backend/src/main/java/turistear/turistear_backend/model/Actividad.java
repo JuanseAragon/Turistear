@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @Entity
 @Table(name = "actividades")
@@ -19,6 +20,13 @@ public class Actividad {
     @Column(name = "id_actividad")
     private Long idActividad;
 
+    @ManyToMany
+    @JoinTable(
+            name = "actividad_etiquetas",
+            joinColumns = @JoinColumn(name = "actividad_id"),
+            inverseJoinColumns = @JoinColumn(name = "etiqueta_id"))
+    private Set<Etiqueta> tags;
+
     @Column(nullable = false)
     private String nombre;
 
@@ -27,14 +35,35 @@ public class Actividad {
 
     private String ubicacion;
 
-    @Column(name = "fecha_hora_inicio")
-    private LocalDateTime fechaHoraInicio;
+//    @Column(name = "fecha_hora_inicio")
+//    private LocalDateTime fechaHoraInicio;
+//
+//    @Column(name = "fecha_hora_final")
+//    private LocalDateTime fechaHoraFinal;
 
-    @Column(name = "fecha_hora_final")
-    private LocalDateTime fechaHoraFinal;
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "id_itinerario", nullable = false)
+//    @JsonIgnore
+//    private Itinerario itinerario;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_itinerario", nullable = false)
-    @JsonIgnore
-    private Itinerario itinerario;
+
+    public Long getIdActividad() {
+        return idActividad;
+    }
+
+    public Set<Etiqueta> getTags() {
+        return tags;
+    }
+
+    public String getNombre() {
+        return nombre;
+    }
+
+    public String getDescripcion() {
+        return descripcion;
+    }
+
+    public String getUbicacion() {
+        return ubicacion;
+    }
 }
