@@ -1,7 +1,6 @@
 package turistear.turistear_backend.controller;
 
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import turistear.turistear_backend.dto.ItinerarioDTO;
@@ -14,9 +13,6 @@ import java.util.Set;
 @RestController
 @RequestMapping("/itinerario")
 public class ControllerItinerary {
-
-    @Autowired
-    private ItinerarioService itinerarioService;
 
     private final ServiceItinerario serviceItinerario;
 
