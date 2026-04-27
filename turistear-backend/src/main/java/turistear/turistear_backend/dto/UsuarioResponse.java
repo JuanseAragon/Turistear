@@ -19,4 +19,5 @@ public class UsuarioResponse {
     private String email;
     private LocalDate fechaNacimiento;
     private TipoTema tema;
+    private String fotoPerfil;
 }

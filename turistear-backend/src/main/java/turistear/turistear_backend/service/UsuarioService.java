@@ -26,6 +26,7 @@ public class UsuarioService {
 
         usuario.setNombre(request.getNombre());
         usuario.setFechaNacimiento(request.getFechaNacimiento());
+        usuario.setFotoPerfil(request.getFotoPerfil());
 
         return toResponse(usuarioRepository.save(usuario));
     }
@@ -44,6 +45,7 @@ public class UsuarioService {
                 .email(usuario.getEmail())
                 .fechaNacimiento(usuario.getFechaNacimiento())
                 .tema(usuario.getTema())
+                .fotoPerfil(usuario.getFotoPerfil())
                 .build();
     }
 }
