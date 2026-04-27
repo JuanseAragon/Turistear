@@ -29,8 +29,6 @@ public class Itinerario {
     @Column(nullable = false)
     private String titulo;
 
-//    private String guia;
-
     @Column(nullable = false)
     private String destino;
 
@@ -49,21 +47,16 @@ public class Itinerario {
     @Column(columnDefinition = "TEXT")
     private String descripcion;
 
+    @Column(name = "foto_itinerario")
+    private String fotoItinerario;
+
     @ManyToOne
     @JoinColumn(name = "creador_id")
     private Usuario creador;
 
-//    @OneToMany(mappedBy = "itinerario", cascade = CascadeType.ALL, orphanRemoval = true)
-//    @JsonIgnore
-//    private List<Actividad> actividades;
-
     @OneToMany( mappedBy = "itinerario", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("fecha ASC, hora ASC")
     private List<ItemItinerario> itemItinerarios;
-
-//    @OneToOne(mappedBy = "itinerario")
-//    @JsonIgnore
-//    private Publicacion publicacion;
 
     @ManyToMany(mappedBy = "favoritos")
     private Set<Usuario> usuariosQueLoFavoritearon = new HashSet<>();

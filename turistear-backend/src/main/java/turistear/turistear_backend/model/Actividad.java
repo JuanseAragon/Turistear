@@ -33,19 +33,9 @@ public class Actividad {
     @Column(columnDefinition = "TEXT")
     private String descripcion;
 
-    private String ubicacion;
-
-//    @Column(name = "fecha_hora_inicio")
-//    private LocalDateTime fechaHoraInicio;
-//
-//    @Column(name = "fecha_hora_final")
-//    private LocalDateTime fechaHoraFinal;
-
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "id_itinerario", nullable = false)
-//    @JsonIgnore
-//    private Itinerario itinerario;
-
+    @ManyToOne
+    @JoinColumn(name = "lugar_id")
+    private Lugar lugar;
 
     public Long getIdActividad() {
         return idActividad;
@@ -64,6 +54,6 @@ public class Actividad {
     }
 
     public String getUbicacion() {
-        return ubicacion;
+        return lugar.getProvincia() + ", " + lugar.getLocalidad();
     }
 }

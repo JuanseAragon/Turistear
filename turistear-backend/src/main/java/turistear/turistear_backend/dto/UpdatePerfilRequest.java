@@ -14,4 +14,6 @@ public class UpdatePerfilRequest {
 
     @NotNull(message = "La fecha de nacimiento es obligatoria")
     private LocalDate fechaNacimiento;
+
+    private String fotoPerfil;
 }
