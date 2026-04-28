@@ -30,7 +30,7 @@ public class ServiceItinerario {
 
     // Correcto:
     @Transactional
-    public Itinerario crearItinerario(ItinerarioRequest request) {
+    public ItinerarioDTO crearItinerario(ItinerarioRequest request) {
         // 1. Buscar el usuario REAL en la base
         Usuario creador = repositorioUsuario.findById(request.idCreador())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + request.idCreador()));
@@ -48,21 +48,10 @@ public class ServiceItinerario {
 
         // 3. Guardar
         creador.getMis_itinerarios().add(itinerario);
-        return repositorioItinerario.save(itinerario);
+        Itinerario guardado = repositorioItinerario.save(itinerario);
+        
+        return ItinerarioDTO.from(guardado);
     }
-
-//    public Usuario agregarItinerarioAUsuario(Integer idUsuario, Integer idItinerario) {
-//
-//        Usuario usuario = repositorioUsuario.findById(idUsuario)
-//                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-//
-//        Itinerario itinerario = repositorioItinerario.findById(idItinerario)
-//                .orElseThrow(() -> new RuntimeException("Itinerario no encontrado"));
-//
-//        usuario.agregarItinerario(itinerario);
-//
-//        return repositorioUsuario.save(usuario);
-//    }
 
     public Set<ItinerarioDTO> obtenerItinerariosPorUsuario(Long idUsuario) {
 

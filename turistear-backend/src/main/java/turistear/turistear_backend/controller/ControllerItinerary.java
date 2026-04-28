@@ -1,12 +1,16 @@
 package turistear.turistear_backend.controller;
 
 import jakarta.validation.Valid;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import turistear.turistear_backend.dto.ItinerarioDTO;
 import turistear.turistear_backend.dto.ItinerarioRequest;
 import turistear.turistear_backend.model.Itinerario;
 import turistear.turistear_backend.service.ServiceItinerario;
+import org.springframework.http.HttpStatus;
+
 
 import java.util.Set;
 
@@ -21,8 +25,10 @@ public class ControllerItinerary {
     }
 
     @PostMapping
-    public Itinerario crearItinerario(@RequestBody ItinerarioRequest request) {
-        return serviceItinerario.crearItinerario(request);
+    public ResponseEntity<ItinerarioDTO> crearItinerario(@RequestBody ItinerarioRequest request) {
+        return ResponseEntity
+            .status(HttpStatus.CREATED)
+            .body(serviceItinerario.crearItinerario(request));
     }
 
     @GetMapping("/itinerarios")
@@ -36,30 +42,6 @@ public class ControllerItinerary {
         return serviceItinerario.getItinerariosFavoritos(id_usuario);
     }
 
-//    @GetMapping("/{id}")
-//    public ResponseEntity<?> getItineraryById() {
-//        return ResponseEntity.ok().build();
-//    }
-//
-//    @GetMapping
-//    public ResponseEntity<?> getAllItineraries() {
-//        return ResponseEntity.ok().build();
-//    }
-//
-//    @PutMapping("/{id}")
-//    public ResponseEntity<?> updateItinerary() {
-//        return ResponseEntity.ok().build();
-//    }
-//
-//    @PostMapping("/generate")
-//    public ResponseEntity<?> generateItinerary() {
-//        return ResponseEntity.ok().build();
-//    }
-//
-//    @DeleteMapping("/{id}")
-//    public ResponseEntity<?> deleteItinerary() {
-//        return ResponseEntity.ok().build();
-//    }
 
 
 }

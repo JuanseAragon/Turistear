@@ -22,7 +22,7 @@ import java.util.Set;
 public class Itinerario {
 
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_itinerario")
     private Long idItinerario;
 
