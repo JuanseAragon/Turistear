@@ -7,9 +7,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import turistear.turistear_backend.dto.ItinerarioDTO;
 import turistear.turistear_backend.dto.ItinerarioRequest;
-import turistear.turistear_backend.model.Itinerario;
+import turistear.turistear_backend.dto.RequestUpdateItinerary;
 import turistear.turistear_backend.service.ServiceItinerario;
-import org.springframework.http.HttpStatus;
 
 
 import java.util.Set;
@@ -42,6 +41,28 @@ public class ControllerItinerary {
         return serviceItinerario.getItinerariosFavoritos(id_usuario);
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<ItinerarioDTO> obtenerItinerarioPorId(@PathVariable Long id) {
+        return serviceItinerario.obtenerItinerarioPorId(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<ItinerarioDTO> actualizarItinerario(
+            @PathVariable Long id,
+            @Valid @RequestBody RequestUpdateItinerary request) {
+        return serviceItinerario.actualizarItinerario(id, request)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminarItinerario(@PathVariable Long id) {
+        boolean eliminado = serviceItinerario.eliminarItinerario(id);
+        if (!eliminado) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.noContent().build();
+    }
 }

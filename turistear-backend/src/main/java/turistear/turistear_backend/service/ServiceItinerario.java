@@ -1,10 +1,11 @@
 package turistear.turistear_backend.service;
 
 
-import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import turistear.turistear_backend.dto.ItinerarioDTO;
 import turistear.turistear_backend.dto.ItinerarioRequest;
+import turistear.turistear_backend.dto.RequestUpdateItinerary;
 import turistear.turistear_backend.model.Itinerario;
 import turistear.turistear_backend.model.Usuario;
 import turistear.turistear_backend.repository.ItinerarioRepository;
@@ -12,6 +13,7 @@ import turistear.turistear_backend.repository.UsuarioRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -53,6 +55,7 @@ public class ServiceItinerario {
         return ItinerarioDTO.from(guardado);
     }
 
+    @Transactional(readOnly = true)
     public Set<ItinerarioDTO> obtenerItinerariosPorUsuario(Long idUsuario) {
 
         Usuario usuario = repositorioUsuario.findById(idUsuario)
@@ -64,6 +67,7 @@ public class ServiceItinerario {
                 .collect(Collectors.toSet());
     }
 
+    @Transactional(readOnly = true)
     public Set<ItinerarioDTO> getItinerariosFavoritos(Long id_usuario){
         Usuario usuario = repositorioUsuario.findById(id_usuario)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado."));
@@ -71,5 +75,36 @@ public class ServiceItinerario {
                 .stream()
                 .map(ItinerarioDTO::from)
                 .collect(Collectors.toSet());
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<ItinerarioDTO> obtenerItinerarioPorId(Long idItinerario) {
+        return repositorioItinerario.findById(idItinerario)
+                .map(ItinerarioDTO::from);
+    }
+
+    @Transactional
+    public boolean eliminarItinerario(Long idItinerario) {
+        if (!repositorioItinerario.existsById(idItinerario)) {
+            return false;
+        }
+        repositorioItinerario.deleteById(idItinerario);
+        return true;
+    }
+
+    @Transactional
+    public Optional<ItinerarioDTO> actualizarItinerario(Long idItinerario, RequestUpdateItinerary request) {
+        return repositorioItinerario.findById(idItinerario).map(itinerario -> {
+            if (request.nombre() != null) {
+                itinerario.setTitulo(request.nombre());
+            }
+            if (request.descripcion() != null) {
+                itinerario.setDescripcion(request.descripcion());
+            }
+            if (request.esPublico() != null) {
+                itinerario.setEsPublico(request.esPublico());
+            }
+            return ItinerarioDTO.from(repositorioItinerario.save(itinerario));
+        });
     }
 }
