@@ -49,7 +49,7 @@ public class Usuario {
     private Set<Itinerario> mis_itinerarios = new HashSet<>();
 
 
-    @ManyToMany(cascade = CascadeType.ALL)
+    @ManyToMany
     @JoinTable(
             name = "favoritos",
             joinColumns = @JoinColumn(name = "usuario_id"),
