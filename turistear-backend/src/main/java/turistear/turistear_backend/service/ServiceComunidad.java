@@ -68,13 +68,13 @@ public class ServiceComunidad {
     }
 
     @Transactional(readOnly = true)
-    public Itinerario obtenerPublicacionPorId(Long idItinerario) {
+    public ItinerarioDTO obtenerPublicacionPorId(Long idItinerario) {
         Itinerario itinerario = repositoryItinerario.findById(idItinerario)
                 .orElseThrow(() -> new RuntimeException("Publicación no encontrada"));
 
-        if (!itinerario.getEsPublico()) {
+        if (!Boolean.TRUE.equals(itinerario.getEsPublico())) {
             throw new RuntimeException("Este itinerario no está publicado");
         }
-        return itinerario;
+        return ItinerarioDTO.from(itinerario);
     }
 }

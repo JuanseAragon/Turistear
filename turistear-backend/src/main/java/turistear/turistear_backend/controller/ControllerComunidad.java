@@ -3,7 +3,6 @@ package turistear.turistear_backend.controller;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import turistear.turistear_backend.dto.ItinerarioDTO;
-import turistear.turistear_backend.model.Itinerario;
 import turistear.turistear_backend.service.ServiceComunidad;
 
 import java.util.Set;
@@ -48,7 +47,7 @@ public class ControllerComunidad {
 
     // GET /api/comunidad/publicaciones/{idItinerario}
     @GetMapping("/publicaciones/{idItinerario}")
-    public Itinerario obtenerPublicacionPorId(@PathVariable Long idItinerario) {
+    public ItinerarioDTO obtenerPublicacionPorId(@PathVariable Long idItinerario) {
         return serviceComunidad.obtenerPublicacionPorId(idItinerario);
     }
 }
