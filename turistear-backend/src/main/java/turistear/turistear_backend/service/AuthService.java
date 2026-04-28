@@ -76,6 +76,10 @@ public class AuthService {
         Usuario usuario = usuarioRepository.findById(idUsuario)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
+        if (Boolean.TRUE.equals(usuario.getEliminado())) {
+            throw new IllegalArgumentException("Usuario no encontrado");
+        }
+
         if (!passwordEncoder.matches(request.getContraseniaActual(), usuario.getContrasenia())) {
             throw new IllegalArgumentException("La contraseña actual es incorrecta");
         }

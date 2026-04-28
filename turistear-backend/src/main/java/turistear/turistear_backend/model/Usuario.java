@@ -45,6 +45,10 @@ public class Usuario {
     @Column(name = "foto_perfil")
     private String fotoPerfil;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean eliminado = false;
+
     @OneToMany(mappedBy = "creador")
     private Set<Itinerario> mis_itinerarios = new HashSet<>();
 
