@@ -25,7 +25,7 @@ public class ControllerItinerary {
     }
 
     @PostMapping
-    public ResponseEntity<ItinerarioDTO> crearItinerario(@RequestBody ItinerarioRequest request) {
+    public ResponseEntity<ItinerarioDTO> crearItinerario(@Valid @RequestBody ItinerarioRequest request) {
         return ResponseEntity
             .status(HttpStatus.CREATED)
             .body(serviceItinerario.crearItinerario(request));

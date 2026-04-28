@@ -40,7 +40,7 @@ public class ServiceItinerario {
         itinerario.setTitulo(request.titulo());
         itinerario.setDestino(request.destino());
         itinerario.setDescripcion(request.descripcion());
-        itinerario.setEsPublico(request.esPublico());
+        itinerario.setEsPublico(Boolean.TRUE.equals(request.esPublico()));
         itinerario.setFechaInicio(request.fechaInicio());
         itinerario.setFechaFin(request.fechaFin());
         itinerario.setFechaCreacion(LocalDateTime.now()); // generado en el backend
