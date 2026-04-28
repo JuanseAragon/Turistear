@@ -2,28 +2,49 @@ package turistear.turistear_backend.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import turistear.turistear_backend.dto.ItinerarioDTO;
+import turistear.turistear_backend.model.Itinerario;
+import turistear.turistear_backend.service.ServiceFavoritos;
+
+import java.util.Set;
 
 @RestController
-@RequestMapping("/favorites")
+@RequestMapping("/api/favoritos")
 public class ControllerFavoritos {
 
-    @GetMapping
-    public ResponseEntity<?> getFavorites() {
-        return ResponseEntity.ok().build();
+    private final ServiceFavoritos serviceFavoritos;
+
+    public ControllerFavoritos(ServiceFavoritos serviceFavoritos) {
+        this.serviceFavoritos = serviceFavoritos;
     }
 
-    @PostMapping
-    public ResponseEntity<?> addFavorite() {
-        return ResponseEntity.ok().build();
+
+    @PostMapping("/{idUsuario}/{idItinerario}")
+    public void agregarAFavoritos(
+            @PathVariable Long idUsuario,
+            @PathVariable Long idItinerario) {
+        serviceFavoritos.agregarAFavoritos(idUsuario, idItinerario);
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> removeFavorite() {
-        return ResponseEntity.ok().build();
+    // DELETE /api/favoritos/{idUsuario}/{idItinerario}
+    @DeleteMapping("/{idUsuario}/{idItinerario}")
+    public void eliminarDeFavoritos(
+            @PathVariable Long idUsuario,
+            @PathVariable Long idItinerario) {
+        serviceFavoritos.eliminarDeFavoritos(idUsuario, idItinerario);
     }
 
-    @GetMapping("/{id}/download")
-    public ResponseEntity<?> downloadFavorite() {
-        return ResponseEntity.ok().build();
+    // GET /api/favoritos/{idUsuario}
+    @GetMapping("/{idUsuario}")
+    public Set<ItinerarioDTO> obtenerFavoritos(@PathVariable Long idUsuario) {
+        return serviceFavoritos.obtenerFavoritos(idUsuario);
+    }
+
+    // GET /api/favoritos/{idUsuario}/{idItinerario}/descargar
+    @GetMapping("/{idUsuario}/{idItinerario}/descargar")
+    public Itinerario descargarFavorito(
+            @PathVariable Long idUsuario,
+            @PathVariable Long idItinerario) {
+        return serviceFavoritos.descargarFavorito(idUsuario, idItinerario);
     }
 }

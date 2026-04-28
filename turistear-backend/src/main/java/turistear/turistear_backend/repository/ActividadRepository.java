@@ -9,5 +9,4 @@ import java.util.List;
 @Repository
 public interface ActividadRepository extends JpaRepository<Actividad, Long> {
 
-    List<Actividad> findByItinerarioIdItinerario(Long idItinerario);
 }
