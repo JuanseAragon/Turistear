@@ -43,26 +43,19 @@ public class ControllerItinerary {
 
     @GetMapping("/{id}")
     public ResponseEntity<ItinerarioDTO> obtenerItinerarioPorId(@PathVariable Long id) {
-        return serviceItinerario.obtenerItinerarioPorId(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        return ResponseEntity.ok(serviceItinerario.obtenerItinerarioPorId(id));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ItinerarioDTO> actualizarItinerario(
             @PathVariable Long id,
             @Valid @RequestBody RequestUpdateItinerary request) {
-        return serviceItinerario.actualizarItinerario(id, request)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        return ResponseEntity.ok(serviceItinerario.actualizarItinerario(id, request));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarItinerario(@PathVariable Long id) {
-        boolean eliminado = serviceItinerario.eliminarItinerario(id);
-        if (!eliminado) {
-            return ResponseEntity.notFound().build();
-        }
+        serviceItinerario.eliminarItinerario(id);
         return ResponseEntity.noContent().build();
     }
 }

@@ -5,6 +5,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import turistear.turistear_backend.dto.*;
 import turistear.turistear_backend.enumerable.TipoTema;
+import turistear.turistear_backend.exception.ConflictException;
+import turistear.turistear_backend.exception.ResourceNotFoundException;
+import turistear.turistear_backend.exception.UnauthorizedException;
 import turistear.turistear_backend.model.Usuario;
 import turistear.turistear_backend.repository.UsuarioRepository;
 
@@ -31,7 +34,7 @@ public class AuthService {
 
     public AuthResponse register(RegisterRequest request) {
         if (usuarioRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("Ya existe un usuario con ese email");
+            throw new ConflictException("Ya existe un usuario con ese email");
         }
 
         Usuario usuario = Usuario.builder()
@@ -56,10 +59,10 @@ public class AuthService {
 
     public AuthResponse login(LoginRequest request) {
         Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("Email o contraseña incorrectos"));
+                .orElseThrow(() -> new UnauthorizedException("Email o contraseña incorrectos"));
 
         if (!passwordEncoder.matches(request.getContrasenia(), usuario.getContrasenia())) {
-            throw new IllegalArgumentException("Email o contraseña incorrectos");
+            throw new UnauthorizedException("Email o contraseña incorrectos");
         }
 
         String token = generateToken(usuario);
@@ -74,14 +77,14 @@ public class AuthService {
 
     public void changePassword(Long idUsuario, ChangePasswordRequest request) {
         Usuario usuario = usuarioRepository.findById(idUsuario)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
         if (Boolean.TRUE.equals(usuario.getEliminado())) {
-            throw new IllegalArgumentException("Usuario no encontrado");
+            throw new ResourceNotFoundException("Usuario no encontrado");
         }
 
         if (!passwordEncoder.matches(request.getContraseniaActual(), usuario.getContrasenia())) {
-            throw new IllegalArgumentException("La contraseña actual es incorrecta");
+            throw new UnauthorizedException("La contraseña actual es incorrecta");
         }
 
         usuario.setContrasenia(passwordEncoder.encode(request.getContraseniaNueva()));

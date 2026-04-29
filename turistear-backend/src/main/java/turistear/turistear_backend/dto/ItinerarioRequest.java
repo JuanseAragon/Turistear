@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+import turistear.turistear_backend.enumerable.Provincia;
 
 import java.time.LocalDate;
 
@@ -13,9 +14,8 @@ public record ItinerarioRequest(
         @Size(max = 120, message = "El titulo no puede superar los 120 caracteres")
         String titulo,
 
-        @NotBlank(message = "El destino es obligatorio")
-        @Size(max = 120, message = "El destino no puede superar los 120 caracteres")
-        String destino,
+        @NotNull(message = "El destino (provincia) es obligatorio")
+        Provincia destino,
 
         @Size(max = 2000, message = "La descripcion no puede superar los 2000 caracteres")
         String descripcion,

@@ -6,14 +6,13 @@ import org.springframework.transaction.annotation.Transactional;
 import turistear.turistear_backend.dto.ItinerarioDTO;
 import turistear.turistear_backend.dto.ItinerarioRequest;
 import turistear.turistear_backend.dto.RequestUpdateItinerary;
+import turistear.turistear_backend.exception.ResourceNotFoundException;
 import turistear.turistear_backend.model.Itinerario;
 import turistear.turistear_backend.model.Usuario;
 import turistear.turistear_backend.repository.ItinerarioRepository;
 import turistear.turistear_backend.repository.UsuarioRepository;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -35,7 +34,7 @@ public class ServiceItinerario {
     public ItinerarioDTO crearItinerario(ItinerarioRequest request) {
         // 1. Buscar el usuario REAL en la base
         Usuario creador = repositorioUsuario.findById(request.idCreador())
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + request.idCreador()));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con id: " + request.idCreador()));
 
         // 2. Construir la entity
         Itinerario itinerario = new Itinerario();
@@ -59,7 +58,7 @@ public class ServiceItinerario {
     public Set<ItinerarioDTO> obtenerItinerariosPorUsuario(Long idUsuario) {
 
         Usuario usuario = repositorioUsuario.findById(idUsuario)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
         return usuario.getMis_itinerarios()
                 .stream()
@@ -70,7 +69,7 @@ public class ServiceItinerario {
     @Transactional(readOnly = true)
     public Set<ItinerarioDTO> getItinerariosFavoritos(Long id_usuario){
         Usuario usuario = repositorioUsuario.findById(id_usuario)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado."));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
         return usuario.getFavoritos()
                 .stream()
                 .map(ItinerarioDTO::from)
@@ -78,33 +77,39 @@ public class ServiceItinerario {
     }
 
     @Transactional(readOnly = true)
-    public Optional<ItinerarioDTO> obtenerItinerarioPorId(Long idItinerario) {
-        return repositorioItinerario.findById(idItinerario)
-                .map(ItinerarioDTO::from);
+    public ItinerarioDTO obtenerItinerarioPorId(Long idItinerario) {
+        Itinerario itinerario = repositorioItinerario.findById(idItinerario)
+                .orElseThrow(() -> new ResourceNotFoundException("Itinerario no encontrado"));
+        return ItinerarioDTO.from(itinerario);
+    }
+
+    /**
+     * Soft delete: marca el itinerario como eliminado en lugar de borrarlo
+     * de la base. Las queries posteriores lo ignoran gracias al
+     * {@code @SQLRestriction("eliminado = false")} en {@link Itinerario}.
+     */
+    @Transactional
+    public void eliminarItinerario(Long idItinerario) {
+        Itinerario itinerario = repositorioItinerario.findById(idItinerario)
+                .orElseThrow(() -> new ResourceNotFoundException("Itinerario no encontrado"));
+        itinerario.setEliminado(true);
+        repositorioItinerario.save(itinerario);
     }
 
     @Transactional
-    public boolean eliminarItinerario(Long idItinerario) {
-        if (!repositorioItinerario.existsById(idItinerario)) {
-            return false;
+    public ItinerarioDTO actualizarItinerario(Long idItinerario, RequestUpdateItinerary request) {
+        Itinerario itinerario = repositorioItinerario.findById(idItinerario)
+                .orElseThrow(() -> new ResourceNotFoundException("Itinerario no encontrado"));
+
+        if (request.nombre() != null) {
+            itinerario.setTitulo(request.nombre());
         }
-        repositorioItinerario.deleteById(idItinerario);
-        return true;
-    }
-
-    @Transactional
-    public Optional<ItinerarioDTO> actualizarItinerario(Long idItinerario, RequestUpdateItinerary request) {
-        return repositorioItinerario.findById(idItinerario).map(itinerario -> {
-            if (request.nombre() != null) {
-                itinerario.setTitulo(request.nombre());
-            }
-            if (request.descripcion() != null) {
-                itinerario.setDescripcion(request.descripcion());
-            }
-            if (request.esPublico() != null) {
-                itinerario.setEsPublico(request.esPublico());
-            }
-            return ItinerarioDTO.from(repositorioItinerario.save(itinerario));
-        });
+        if (request.descripcion() != null) {
+            itinerario.setDescripcion(request.descripcion());
+        }
+        if (request.esPublico() != null) {
+            itinerario.setEsPublico(request.esPublico());
+        }
+        return ItinerarioDTO.from(repositorioItinerario.save(itinerario));
     }
 }

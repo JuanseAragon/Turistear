@@ -1,5 +1,6 @@
 package turistear.turistear_backend.dto;
 
+import turistear.turistear_backend.enumerable.Provincia;
 import turistear.turistear_backend.model.Itinerario;
 
 import java.time.LocalDate;
@@ -10,7 +11,7 @@ import java.util.List;
 public record ItinerarioDTO(
         Long id,
         String titulo,
-        String destino,
+        Provincia destino,
         String descripcion,
         boolean esPublico,
         LocalDateTime fechaCreacion,
@@ -24,16 +25,14 @@ public record ItinerarioDTO(
                 itinerario.getTitulo(),
                 itinerario.getDestino(),
                 itinerario.getDescripcion(),
-                Boolean.TRUE.equals(itinerario.getEsPublico()),
+                itinerario.getEsPublico(),
                 itinerario.getFechaCreacion(),
                 itinerario.getFechaInicio(),
                 itinerario.getFechaFin(),
-                // Convierte cada ItemItinerario en ItemItinerarioDTO
-                itinerario.getItemItinerarios() == null ? List.of() :
-                        itinerario.getItemItinerarios()
-                                .stream()
-                                .map(ItemItinerarioDTO::from)
-                                .toList()
+                itinerario.getItemItinerarios()
+                        .stream()
+                        .map(ItemItinerarioDTO::from)
+                        .toList()
         );
     }
 }
