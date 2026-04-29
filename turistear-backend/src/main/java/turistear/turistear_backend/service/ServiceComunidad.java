@@ -5,6 +5,9 @@ import org.springframework.transaction.annotation.Transactional;
 import turistear.turistear_backend.dto.ItinerarioDTO;
 import turistear.turistear_backend.enumerable.CategoriaActividad;
 import turistear.turistear_backend.enumerable.Provincia;
+import turistear.turistear_backend.exception.BadRequestException;
+import turistear.turistear_backend.exception.ForbiddenException;
+import turistear.turistear_backend.exception.ResourceNotFoundException;
 import turistear.turistear_backend.model.Itinerario;
 import turistear.turistear_backend.repository.ItinerarioRepository;
 import turistear.turistear_backend.repository.UsuarioRepository;
@@ -43,11 +46,11 @@ public class ServiceComunidad {
     @Transactional
     public void publicarItinerario(Long idItinerario, Long idUsuario) {
         Itinerario itinerario = repositoryItinerario.findById(idItinerario)
-                .orElseThrow(() -> new RuntimeException("Itinerario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Itinerario no encontrado"));
 
         // Validación: solo el creador puede publicar
         if (!itinerario.getCreador().getIdUsuario().equals(idUsuario)) {
-            throw new RuntimeException("Solo el creador puede publicar este itinerario");
+            throw new ForbiddenException("Solo el creador puede publicar este itinerario");
         }
 
         itinerario.setEsPublico(true);
@@ -57,11 +60,11 @@ public class ServiceComunidad {
     @Transactional
     public void eliminarPublicacion(Long idItinerario, Long idUsuario) {
         Itinerario itinerario = repositoryItinerario.findById(idItinerario)
-                .orElseThrow(() -> new RuntimeException("Itinerario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Itinerario no encontrado"));
 
         // Validación: solo el creador puede despublicar
         if (!itinerario.getCreador().getIdUsuario().equals(idUsuario)) {
-            throw new RuntimeException("Solo el creador puede despublicar este itinerario");
+            throw new ForbiddenException("Solo el creador puede despublicar este itinerario");
         }
 
         // "Eliminar publicación" = despublicar. NO borramos el itinerario.
@@ -72,10 +75,10 @@ public class ServiceComunidad {
     @Transactional(readOnly = true)
     public ItinerarioDTO obtenerPublicacionPorId(Long idItinerario) {
         Itinerario itinerario = repositoryItinerario.findById(idItinerario)
-                .orElseThrow(() -> new RuntimeException("Publicación no encontrada"));
+                .orElseThrow(() -> new ResourceNotFoundException("Publicación no encontrada"));
 
         if (!Boolean.TRUE.equals(itinerario.getEsPublico())) {
-            throw new RuntimeException("Este itinerario no está publicado");
+            throw new BadRequestException("Este itinerario no está publicado");
         }
         return ItinerarioDTO.from(itinerario);
     }

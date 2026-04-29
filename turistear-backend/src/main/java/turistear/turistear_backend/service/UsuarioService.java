@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import turistear.turistear_backend.dto.UpdatePerfilRequest;
 import turistear.turistear_backend.dto.UsuarioResponse;
+import turistear.turistear_backend.exception.ConflictException;
+import turistear.turistear_backend.exception.ResourceNotFoundException;
 import turistear.turistear_backend.model.Usuario;
 import turistear.turistear_backend.repository.UsuarioRepository;
 
@@ -15,10 +17,10 @@ public class UsuarioService {
 
     public UsuarioResponse getById(Long idUsuario) {
         Usuario usuario = usuarioRepository.findById(idUsuario)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
         if (Boolean.TRUE.equals(usuario.getEliminado())) {
-            throw new IllegalArgumentException("Usuario no encontrado");
+            throw new ResourceNotFoundException("Usuario no encontrado");
         }
 
         return toResponse(usuario);
@@ -26,10 +28,10 @@ public class UsuarioService {
 
     public UsuarioResponse update(Long idUsuario, UpdatePerfilRequest request) {
         Usuario usuario = usuarioRepository.findById(idUsuario)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
         if (Boolean.TRUE.equals(usuario.getEliminado())) {
-            throw new IllegalArgumentException("Usuario no encontrado");
+            throw new ResourceNotFoundException("Usuario no encontrado");
         }
 
         usuario.setNombre(request.getNombre());
@@ -41,10 +43,10 @@ public class UsuarioService {
 
     public void delete(Long idUsuario) {
         Usuario usuario = usuarioRepository.findById(idUsuario)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
         if (Boolean.TRUE.equals(usuario.getEliminado())) {
-            throw new IllegalStateException("El usuario ya fue eliminado");
+            throw new ConflictException("El usuario ya fue eliminado");
         }
 
         usuario.setEmail("deleted_" + idUsuario + "@deleted.local");

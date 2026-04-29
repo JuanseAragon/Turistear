@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import turistear.turistear_backend.dto.ItinerarioDTO;
 import turistear.turistear_backend.dto.ItinerarioRequest;
 import turistear.turistear_backend.dto.RequestUpdateItinerary;
+import turistear.turistear_backend.exception.ResourceNotFoundException;
 import turistear.turistear_backend.model.Itinerario;
 import turistear.turistear_backend.model.Usuario;
 import turistear.turistear_backend.repository.ItinerarioRepository;
@@ -35,7 +36,7 @@ public class ServiceItinerario {
     public ItinerarioDTO crearItinerario(ItinerarioRequest request) {
         // 1. Buscar el usuario REAL en la base
         Usuario creador = repositorioUsuario.findById(request.idCreador())
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + request.idCreador()));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con id: " + request.idCreador()));
 
         // 2. Construir la entity
         Itinerario itinerario = new Itinerario();
@@ -59,7 +60,7 @@ public class ServiceItinerario {
     public Set<ItinerarioDTO> obtenerItinerariosPorUsuario(Long idUsuario) {
 
         Usuario usuario = repositorioUsuario.findById(idUsuario)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
         return usuario.getMis_itinerarios()
                 .stream()
@@ -70,7 +71,7 @@ public class ServiceItinerario {
     @Transactional(readOnly = true)
     public Set<ItinerarioDTO> getItinerariosFavoritos(Long id_usuario){
         Usuario usuario = repositorioUsuario.findById(id_usuario)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado."));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
         return usuario.getFavoritos()
                 .stream()
                 .map(ItinerarioDTO::from)
