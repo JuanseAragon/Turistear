@@ -1,7 +1,7 @@
 package turistear.turistear_backend.service;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import turistear.turistear_backend.dto.*;
 import turistear.turistear_backend.enumerable.TipoTema;
@@ -10,27 +10,15 @@ import turistear.turistear_backend.exception.ResourceNotFoundException;
 import turistear.turistear_backend.exception.UnauthorizedException;
 import turistear.turistear_backend.model.Usuario;
 import turistear.turistear_backend.repository.UsuarioRepository;
-
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
-
-import java.nio.charset.StandardCharsets;
-import java.util.Date;
+import turistear.turistear_backend.security.JwtService;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
     private final UsuarioRepository usuarioRepository;
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-
-    @Value("${jwt.secret}")
-    private String jwtSecret;
-
-    @Value("${jwt.expiration}")
-    private long jwtExpiration;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     public AuthResponse register(RegisterRequest request) {
         if (usuarioRepository.existsByEmail(request.getEmail())) {
@@ -47,7 +35,7 @@ public class AuthService {
 
         usuario = usuarioRepository.save(usuario);
 
-        String token = generateToken(usuario);
+        String token = jwtService.generateToken(usuario);
 
         return AuthResponse.builder()
                 .token(token)
@@ -65,7 +53,7 @@ public class AuthService {
             throw new UnauthorizedException("Email o contraseña incorrectos");
         }
 
-        String token = generateToken(usuario);
+        String token = jwtService.generateToken(usuario);
 
         return AuthResponse.builder()
                 .token(token)
@@ -89,19 +77,5 @@ public class AuthService {
 
         usuario.setContrasenia(passwordEncoder.encode(request.getContraseniaNueva()));
         usuarioRepository.save(usuario);
-    }
-
-    private String generateToken(Usuario usuario) {
-        return Jwts.builder()
-                .setSubject(usuario.getEmail())
-                .claim("idUsuario", usuario.getIdUsuario())
-                .claim("nombre", usuario.getNombre())
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
-                .signWith(
-                        Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)),
-                        SignatureAlgorithm.HS256
-                )
-                .compact();
     }
 }
