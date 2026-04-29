@@ -3,6 +3,7 @@ package turistear.turistear_backend.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLRestriction;
 import turistear.turistear_backend.enumerable.Provincia;
 
 import java.time.LocalDate;
@@ -14,6 +15,7 @@ import java.util.Set;
 
 @Entity
 @Table(name = "itinerarios")
+@SQLRestriction("eliminado = false")
 @Getter
 @Setter
 @Builder
@@ -51,6 +53,10 @@ public class Itinerario {
 
     @Column(name = "foto_itinerario")
     private String fotoItinerario;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean eliminado = false;
 
     @ManyToOne
     @JoinColumn(name = "creador_id")
