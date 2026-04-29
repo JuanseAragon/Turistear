@@ -3,6 +3,8 @@ package turistear.turistear_backend.controller;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import turistear.turistear_backend.dto.ItinerarioDTO;
+import turistear.turistear_backend.enumerable.CategoriaActividad;
+import turistear.turistear_backend.enumerable.Provincia;
 import turistear.turistear_backend.service.ServiceComunidad;
 
 import java.util.Set;
@@ -27,6 +29,23 @@ public class ControllerComunidad {
     @GetMapping("/ranking")
     public Set<ItinerarioDTO> obtenerRanking() {
         return serviceComunidad.obtenerRanking();
+    }
+
+    // GET /api/comunidad/buscar?provincia=MENDOZA
+    // Búsqueda de publicaciones por provincia (filtra Itinerario.destino).
+    // Si no se pasa provincia, devuelve todas las publicaciones.
+    @GetMapping("/buscar")
+    public Set<ItinerarioDTO> buscarPorRegion(
+            @RequestParam(required = false) Provincia provincia) {
+        return serviceComunidad.buscarPorRegion(provincia);
+    }
+
+    // GET /api/comunidad/categoria?categoria=NATURALEZA
+    // Filtro de publicaciones por categoría/etiqueta de actividad.
+    @GetMapping("/categoria")
+    public Set<ItinerarioDTO> buscarPorCategoria(
+            @RequestParam CategoriaActividad categoria) {
+        return serviceComunidad.buscarPorCategoria(categoria);
     }
 
     // POST /api/comunidad/publicar/{idItinerario}/{idUsuario}

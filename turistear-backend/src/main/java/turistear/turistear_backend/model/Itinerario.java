@@ -3,6 +3,7 @@ package turistear.turistear_backend.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
+import turistear.turistear_backend.enumerable.Provincia;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -29,8 +30,8 @@ public class Itinerario {
     @Column(nullable = false)
     private String titulo;
 
-    @Column(nullable = false)
-    private String destino;
+    @Enumerated(EnumType.STRING)
+    private Provincia destino;
 
     @Column(name = "es_publico")
     private Boolean esPublico;
@@ -106,7 +107,7 @@ public class Itinerario {
         return usuariosQueLoFavoritearon;
     }
 
-    public String getDestino() {
+    public Provincia getDestino() {
         return destino;
     }
 
@@ -126,7 +127,7 @@ public class Itinerario {
         this.titulo = titulo;
     }
 
-    public void setDestino(String destino) {
+    public void setDestino(Provincia destino) {
         this.destino = destino;
     }
 

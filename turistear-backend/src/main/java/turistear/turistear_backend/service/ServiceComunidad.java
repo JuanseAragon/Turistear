@@ -3,6 +3,8 @@ package turistear.turistear_backend.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import turistear.turistear_backend.dto.ItinerarioDTO;
+import turistear.turistear_backend.enumerable.CategoriaActividad;
+import turistear.turistear_backend.enumerable.Provincia;
 import turistear.turistear_backend.model.Itinerario;
 import turistear.turistear_backend.repository.ItinerarioRepository;
 import turistear.turistear_backend.repository.UsuarioRepository;
@@ -76,5 +78,31 @@ public class ServiceComunidad {
             throw new RuntimeException("Este itinerario no está publicado");
         }
         return ItinerarioDTO.from(itinerario);
+    }
+
+    /**
+     * Búsqueda de publicaciones por provincia.
+     * Filtra directamente sobre Itinerario.destino (enum Provincia).
+     * Si provincia viene null, devuelve todas las publicaciones.
+     */
+    @Transactional(readOnly = true)
+    public Set<ItinerarioDTO> buscarPorRegion(Provincia provincia) {
+        return repositoryItinerario.buscarPorRegion(provincia)
+                .stream()
+                .map(ItinerarioDTO::from)
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Filtro de publicaciones por categoría/etiqueta (ej: NATURALEZA, GASTRONOMICO).
+     * Devuelve los itinerarios públicos que contengan al menos una actividad
+     * etiquetada con la categoría indicada.
+     */
+    @Transactional(readOnly = true)
+    public Set<ItinerarioDTO> buscarPorCategoria(CategoriaActividad categoria) {
+        return repositoryItinerario.buscarPorCategoria(categoria)
+                .stream()
+                .map(ItinerarioDTO::from)
+                .collect(Collectors.toSet());
     }
 }
