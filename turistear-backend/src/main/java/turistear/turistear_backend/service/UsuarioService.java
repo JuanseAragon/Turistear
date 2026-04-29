@@ -17,12 +17,20 @@ public class UsuarioService {
         Usuario usuario = usuarioRepository.findById(idUsuario)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
+        if (Boolean.TRUE.equals(usuario.getEliminado())) {
+            throw new IllegalArgumentException("Usuario no encontrado");
+        }
+
         return toResponse(usuario);
     }
 
     public UsuarioResponse update(Long idUsuario, UpdatePerfilRequest request) {
         Usuario usuario = usuarioRepository.findById(idUsuario)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        if (Boolean.TRUE.equals(usuario.getEliminado())) {
+            throw new IllegalArgumentException("Usuario no encontrado");
+        }
 
         usuario.setNombre(request.getNombre());
         usuario.setFechaNacimiento(request.getFechaNacimiento());
@@ -32,10 +40,16 @@ public class UsuarioService {
     }
 
     public void delete(Long idUsuario) {
-        if (!usuarioRepository.existsById(idUsuario)) {
-            throw new IllegalArgumentException("Usuario no encontrado");
+        Usuario usuario = usuarioRepository.findById(idUsuario)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        if (Boolean.TRUE.equals(usuario.getEliminado())) {
+            throw new IllegalStateException("El usuario ya fue eliminado");
         }
-        usuarioRepository.deleteById(idUsuario);
+
+        usuario.setEmail("deleted_" + idUsuario + "@deleted.local");
+        usuario.setEliminado(true);
+        usuarioRepository.save(usuario);
     }
 
     private UsuarioResponse toResponse(Usuario usuario) {

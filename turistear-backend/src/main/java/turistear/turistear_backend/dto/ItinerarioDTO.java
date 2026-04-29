@@ -24,7 +24,7 @@ public record ItinerarioDTO(
                 itinerario.getTitulo(),
                 itinerario.getDestino(),
                 itinerario.getDescripcion(),
-                itinerario.getEsPublico(),
+                Boolean.TRUE.equals(itinerario.getEsPublico()),
                 itinerario.getFechaCreacion(),
                 itinerario.getFechaInicio(),
                 itinerario.getFechaFin(),

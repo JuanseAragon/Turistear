@@ -3,7 +3,6 @@ package turistear.turistear_backend.controller;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import turistear.turistear_backend.dto.ItinerarioDTO;
-import turistear.turistear_backend.model.Itinerario;
 import turistear.turistear_backend.service.ServiceFavoritos;
 
 import java.util.Set;
@@ -38,13 +37,5 @@ public class ControllerFavoritos {
     @GetMapping("/{idUsuario}")
     public Set<ItinerarioDTO> obtenerFavoritos(@PathVariable Long idUsuario) {
         return serviceFavoritos.obtenerFavoritos(idUsuario);
-    }
-
-    // GET /api/favoritos/{idUsuario}/{idItinerario}/descargar
-    @GetMapping("/{idUsuario}/{idItinerario}/descargar")
-    public Itinerario descargarFavorito(
-            @PathVariable Long idUsuario,
-            @PathVariable Long idItinerario) {
-        return serviceFavoritos.descargarFavorito(idUsuario, idItinerario);
     }
 }

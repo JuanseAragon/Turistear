@@ -52,15 +52,4 @@ public class ServiceFavoritos {
                 .map(ItinerarioDTO::from)
                 .collect(Collectors.toSet());
     }
-
-    @Transactional(readOnly = true)
-    public Itinerario descargarFavorito(Long idUsuario, Long idItinerario) {
-        Usuario usuario = repositoryUsuario.findByIdConFavoritos(idUsuario)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-
-        return usuario.getFavoritos().stream()
-                .filter(it -> it.getIdItinerario().equals(idItinerario))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("El itinerario no está en favoritos"));
-    }
 }

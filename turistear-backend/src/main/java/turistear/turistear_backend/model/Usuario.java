@@ -45,11 +45,15 @@ public class Usuario {
     @Column(name = "foto_perfil")
     private String fotoPerfil;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean eliminado = false;
+
     @OneToMany(mappedBy = "creador")
     private Set<Itinerario> mis_itinerarios = new HashSet<>();
 
 
-    @ManyToMany(cascade = CascadeType.ALL)
+    @ManyToMany
     @JoinTable(
             name = "favoritos",
             joinColumns = @JoinColumn(name = "usuario_id"),
