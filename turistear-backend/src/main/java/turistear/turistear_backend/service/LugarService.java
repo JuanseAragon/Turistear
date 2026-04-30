@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import turistear.turistear_backend.dto.LugarRequest;
 import turistear.turistear_backend.dto.LugarResponse;
+import turistear.turistear_backend.exception.ResourceNotFoundException;
 import turistear.turistear_backend.model.Lugar;
 import turistear.turistear_backend.repository.LugarRepository;
 
@@ -26,7 +27,7 @@ public class LugarService {
 
     public LugarResponse getById(Long id) {
         Lugar lugar = lugarRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Lugar no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Lugar no encontrado"));
         return toResponse(lugar);
     }
 
@@ -39,7 +40,7 @@ public class LugarService {
 
     public LugarResponse update(Long id, LugarRequest request) {
         Lugar lugar = lugarRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Lugar no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Lugar no encontrado"));
         lugar.setProvincia(request.getProvincia());
         lugar.setLocalidad(request.getLocalidad());
         lugar.setDireccion(request.getDireccion());
@@ -48,7 +49,7 @@ public class LugarService {
 
     public void delete(Long id) {
         if (!lugarRepository.existsById(id)) {
-            throw new IllegalArgumentException("Lugar no encontrado");
+            throw new ResourceNotFoundException("Lugar no encontrado");
         }
         lugarRepository.deleteById(id);
     }

@@ -2,7 +2,10 @@ package turistear.turistear_backend.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import turistear.turistear_backend.enumerable.CategoriaActividad;
+import turistear.turistear_backend.enumerable.Provincia;
 import turistear.turistear_backend.model.Itinerario;
 
 import java.util.List;
@@ -24,4 +27,26 @@ public interface ItinerarioRepository extends JpaRepository<Itinerario, Long> {
         ORDER BY COUNT(u) DESC
     """)
     Set<Itinerario> rankingPublicaciones();
+
+    // Búsqueda de publicaciones por provincia.
+    // Filtra directamente sobre Itinerario.destino (enum Provincia).
+    // Si la provincia viene null, devuelve todas las publicaciones.
+    @Query("""
+        SELECT i FROM Itinerario i
+        WHERE i.esPublico = true
+          AND (:provincia IS NULL OR i.destino = :provincia)
+    """)
+    Set<Itinerario> buscarPorRegion(@Param("provincia") Provincia provincia);
+
+    // Filtro de publicaciones por categoría (cualquier actividad del itinerario
+    // tiene al menos una etiqueta con la categoría indicada).
+    @Query("""
+        SELECT DISTINCT i FROM Itinerario i
+        JOIN i.itemItinerarios item
+        JOIN item.actividad a
+        JOIN a.tags t
+        WHERE i.esPublico = true
+          AND t.nombre = :categoria
+    """)
+    Set<Itinerario> buscarPorCategoria(@Param("categoria") CategoriaActividad categoria);
 }

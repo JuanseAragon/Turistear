@@ -2,6 +2,7 @@ package turistear.turistear_backend.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import turistear.turistear_backend.enumerable.Provincia;
 
 @Entity
 @Table(name = "lugares")
@@ -17,8 +18,8 @@ public class Lugar {
     @Column(name = "id_lugar")
     private Long idLugar;
 
-    @Column(nullable = false)
-    private String provincia;
+    @Enumerated(EnumType.STRING)
+    private Provincia provincia;
 
     @Column(nullable = false)
     private String localidad;

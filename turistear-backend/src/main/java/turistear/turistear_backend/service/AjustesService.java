@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import turistear.turistear_backend.dto.UpdatePreferenciasRequest;
 import turistear.turistear_backend.dto.UsuarioResponse;
+import turistear.turistear_backend.exception.ResourceNotFoundException;
 import turistear.turistear_backend.model.Usuario;
 import turistear.turistear_backend.repository.UsuarioRepository;
 
@@ -15,7 +16,7 @@ public class AjustesService {
 
     public UsuarioResponse updatePreferencias(Long idUsuario, UpdatePreferenciasRequest request) {
         Usuario usuario = usuarioRepository.findById(idUsuario)
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
         usuario.setTema(request.getTema());
 
