@@ -1,5 +1,9 @@
 package turistear.turistear_backend.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,9 +24,14 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/provincias")
+@Tag(name = "Provincias", description = "Catálogo de provincias argentinas")
 public class ProvinciaController {
 
     @GetMapping
+    @Operation(summary = "Listar todas las provincias")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Listado obtenido")
+    })
     public List<ProvinciaDTO> listarProvincias() {
         return Arrays.stream(Provincia.values())
                 .map(p -> new ProvinciaDTO(p.name(), p.getDisplayName()))
