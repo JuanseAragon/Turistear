@@ -1,5 +1,6 @@
 package turistear.turistear_backend.controller;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,12 +20,14 @@ public class ControllerAuth {
     private final AuthService authService;
 
     @PostMapping("/register")
+    @SecurityRequirements // sin requerimiento global: este endpoint es público
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         AuthResponse response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PostMapping("/login")
+    @SecurityRequirements // sin requerimiento global: este endpoint es público
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         AuthResponse response = authService.login(request);
         return ResponseEntity.ok(response);
