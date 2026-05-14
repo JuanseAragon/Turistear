@@ -59,36 +59,4 @@ public class Usuario {
             joinColumns = @JoinColumn(name = "usuario_id"),
             inverseJoinColumns = @JoinColumn(name = "itinerario_id"))
     private Set<Itinerario> favoritos = new HashSet<>();
-
-    public Long getIdUsuario() {
-        return idUsuario;
-    }
-
-    public String getNombre() {
-        return nombre;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public String getContrasenia() {
-        return contrasenia;
-    }
-
-    public LocalDate getFechaNacimiento() {
-        return fechaNacimiento;
-    }
-
-    public TipoTema getTema() {
-        return tema;
-    }
-
-    public Set<Itinerario> getMis_itinerarios() {
-        return mis_itinerarios;
-    }
-
-    public Set<Itinerario> getFavoritos() {
-        return favoritos;
-    }
 }

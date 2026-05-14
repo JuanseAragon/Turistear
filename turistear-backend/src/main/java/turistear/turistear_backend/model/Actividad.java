@@ -37,22 +37,6 @@ public class Actividad {
     @JoinColumn(name = "lugar_id")
     private Lugar lugar;
 
-    public Long getIdActividad() {
-        return idActividad;
-    }
-
-    public Set<Etiqueta> getTags() {
-        return tags;
-    }
-
-    public String getNombre() {
-        return nombre;
-    }
-
-    public String getDescripcion() {
-        return descripcion;
-    }
-
     public String getUbicacion() {
         return lugar.getProvincia() + ", " + lugar.getLocalidad();
     }
