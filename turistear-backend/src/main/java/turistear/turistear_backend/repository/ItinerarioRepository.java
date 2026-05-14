@@ -4,7 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import turistear.turistear_backend.enumerable.CategoriaActividad;
+import turistear.turistear_backend.enumerable.CategoriaItinerario;
 import turistear.turistear_backend.enumerable.Provincia;
 import turistear.turistear_backend.model.Itinerario;
 
@@ -48,5 +48,5 @@ public interface ItinerarioRepository extends JpaRepository<Itinerario, Long> {
         WHERE i.esPublico = true
           AND t.nombre = :categoria
     """)
-    Set<Itinerario> buscarPorCategoria(@Param("categoria") CategoriaActividad categoria);
+    Set<Itinerario> buscarPorCategoria(@Param("categoria") CategoriaItinerario categoria);
 }

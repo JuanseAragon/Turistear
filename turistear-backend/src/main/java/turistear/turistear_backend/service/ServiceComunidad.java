@@ -3,7 +3,7 @@ package turistear.turistear_backend.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import turistear.turistear_backend.dto.ItinerarioDTO;
-import turistear.turistear_backend.enumerable.CategoriaActividad;
+import turistear.turistear_backend.enumerable.CategoriaItinerario;
 import turistear.turistear_backend.enumerable.Provincia;
 import turistear.turistear_backend.exception.BadRequestException;
 import turistear.turistear_backend.exception.ForbiddenException;
@@ -102,7 +102,7 @@ public class ServiceComunidad {
      * etiquetada con la categoría indicada.
      */
     @Transactional(readOnly = true)
-    public Set<ItinerarioDTO> buscarPorCategoria(CategoriaActividad categoria) {
+    public Set<ItinerarioDTO> buscarPorCategoria(CategoriaItinerario categoria) {
         return repositoryItinerario.buscarPorCategoria(categoria)
                 .stream()
                 .map(ItinerarioDTO::from)

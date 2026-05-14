@@ -25,9 +25,10 @@ public class AjustesService {
         return UsuarioResponse.builder()
                 .idUsuario(usuario.getIdUsuario())
                 .nombre(usuario.getNombre())
+                .apellido(usuario.getApellido())
                 .email(usuario.getEmail())
-                .fechaNacimiento(usuario.getFechaNacimiento())
                 .tema(usuario.getTema())
+                .fotoPerfil(usuario.getFotoPerfil())
                 .build();
     }
 }

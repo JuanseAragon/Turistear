@@ -11,11 +11,9 @@ import java.util.Optional;
 @Repository
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
-    @Query("SELECT u FROM Usuario u WHERE u.email = :email AND u.eliminado = false")
-    Optional<Usuario> findByEmail(@Param("email") String email);
+    Optional<Usuario> findByEmail(String email);
 
-    @Query("SELECT COUNT(u) > 0 FROM Usuario u WHERE u.email = :email AND u.eliminado = false")
-    boolean existsByEmail(@Param("email") String email);
+    boolean existsByEmail(String email);
 
     @Query("SELECT u FROM Usuario u LEFT JOIN FETCH u.favoritos WHERE u.idUsuario = :id")
     Optional<Usuario> findByIdConFavoritos(@Param("id") Long id);

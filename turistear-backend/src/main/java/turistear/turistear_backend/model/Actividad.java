@@ -1,11 +1,7 @@
 package turistear.turistear_backend.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.time.LocalDateTime;
-import java.util.Set;
 
 @Entity
 @Table(name = "actividades")
@@ -20,24 +16,13 @@ public class Actividad {
     @Column(name = "id_actividad")
     private Long idActividad;
 
-    @ManyToMany
-    @JoinTable(
-            name = "actividad_etiquetas",
-            joinColumns = @JoinColumn(name = "actividad_id"),
-            inverseJoinColumns = @JoinColumn(name = "etiqueta_id"))
-    private Set<Etiqueta> tags;
-
     @Column(nullable = false)
     private String nombre;
 
     @Column(columnDefinition = "TEXT")
     private String descripcion;
 
-    @ManyToOne
-    @JoinColumn(name = "lugar_id")
-    private Lugar lugar;
+    private String localidad;
 
-    public String getUbicacion() {
-        return lugar.getProvincia() + ", " + lugar.getLocalidad();
-    }
+    private String direccion;
 }

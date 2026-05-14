@@ -1,13 +1,10 @@
 package turistear.turistear_backend.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import turistear.turistear_backend.enumerable.TipoTema;
 
-import java.time.LocalDate;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -17,7 +14,7 @@ import java.util.Set;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(of = "idUsuario")   // ← solo compara por id
+@EqualsAndHashCode(of = "idUsuario")
 @ToString(exclude = {"mis_itinerarios", "favoritos"})
 public class Usuario {
 
@@ -29,29 +26,27 @@ public class Usuario {
     @Column(nullable = false)
     private String nombre;
 
+    @Column(nullable = false)
+    private String apellido;
+
     @Column(nullable = false, unique = true)
     private String email;
 
     @Column(nullable = false)
     private String contrasenia;
 
-    @Column(name = "fecha_nacimiento")
-    private LocalDate fechaNacimiento;
+    @Column(name = "foto_perfil")
+    private String fotoPerfil;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private TipoTema tema;
 
-    @Column(name = "foto_perfil")
-    private String fotoPerfil;
-
-    @Column(nullable = false)
-    @Builder.Default
-    private Boolean eliminado = false;
-
+    // TODO: estas relaciones apuntan al viejo Itinerario y se reescribirán
+    // en el paso 5 (ItinerarioUsuario + Favorito). Por ahora se dejan para
+    // no romper la compilación de los servicios que aún las usan.
     @OneToMany(mappedBy = "creador")
     private Set<Itinerario> mis_itinerarios = new HashSet<>();
-
 
     @ManyToMany
     @JoinTable(

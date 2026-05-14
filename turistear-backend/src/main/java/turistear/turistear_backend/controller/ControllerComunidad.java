@@ -10,7 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import turistear.turistear_backend.dto.ErrorResponse;
 import turistear.turistear_backend.dto.ItinerarioDTO;
-import turistear.turistear_backend.enumerable.CategoriaActividad;
+import turistear.turistear_backend.enumerable.CategoriaItinerario;
 import turistear.turistear_backend.enumerable.Provincia;
 import turistear.turistear_backend.service.ServiceComunidad;
 
@@ -72,7 +72,7 @@ public class ControllerComunidad {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public Set<ItinerarioDTO> buscarPorCategoria(
-            @RequestParam CategoriaActividad categoria) {
+            @RequestParam CategoriaItinerario categoria) {
         return serviceComunidad.buscarPorCategoria(categoria);
     }
 
