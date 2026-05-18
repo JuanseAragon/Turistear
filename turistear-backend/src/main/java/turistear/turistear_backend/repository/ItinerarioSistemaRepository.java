@@ -56,8 +56,8 @@ public interface ItinerarioSistemaRepository extends JpaRepository<ItinerarioSis
         JOIN i.etiquetas e
         WHERE (:provincia IS NULL OR i.provincia = :provincia)
           AND e.nombre IN :tags
-          AND (:fechaInicio IS NULL OR i.fechaFin >= :fechaInicio)
-          AND (:fechaFin    IS NULL OR i.fechaInicio <= :fechaFin)
+          AND (i.fechaFin >= COALESCE(:fechaInicio, i.fechaFin))
+          AND (i.fechaInicio <= COALESCE(:fechaFin, i.fechaInicio))
     """)
     List<ItinerarioSistema> buscarPorPreferenciasConTags(
             @Param("provincia") Provincia provincia,
@@ -74,8 +74,8 @@ public interface ItinerarioSistemaRepository extends JpaRepository<ItinerarioSis
     @Query("""
         SELECT i FROM ItinerarioSistema i
         WHERE (:provincia IS NULL OR i.provincia = :provincia)
-          AND (:fechaInicio IS NULL OR i.fechaFin >= :fechaInicio)
-          AND (:fechaFin    IS NULL OR i.fechaInicio <= :fechaFin)
+          AND (i.fechaFin >= COALESCE(:fechaInicio, i.fechaFin))
+          AND (i.fechaInicio <= COALESCE(:fechaFin, i.fechaInicio))
     """)
     List<ItinerarioSistema> buscarPorPreferenciasSinTags(
             @Param("provincia") Provincia provincia,
