@@ -1,115 +1,108 @@
 package turistear.turistear_backend.service;
 
-
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import turistear.turistear_backend.dto.ItinerarioDTO;
-import turistear.turistear_backend.dto.ItinerarioRequest;
-import turistear.turistear_backend.dto.RequestUpdateItinerary;
+import turistear.turistear_backend.dto.ItinerarioSistemaDTO;
+import turistear.turistear_backend.dto.ItinerarioSistemaResumenDTO;
+import turistear.turistear_backend.enumerable.CategoriaItinerario;
+import turistear.turistear_backend.enumerable.Provincia;
 import turistear.turistear_backend.exception.ResourceNotFoundException;
-import turistear.turistear_backend.model.Itinerario;
-import turistear.turistear_backend.model.Usuario;
-import turistear.turistear_backend.repository.ItinerarioRepository;
-import turistear.turistear_backend.repository.UsuarioRepository;
+import turistear.turistear_backend.model.ItinerarioSistema;
+import turistear.turistear_backend.repository.ItinerarioSistemaRepository;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
+/**
+ * Lógica de itinerarios precargados del sistema. Maneja Explorar,
+ * Buscar por preferencias, Ranking, detalle y borrado (admin).
+ * No toca copias del usuario — eso es responsabilidad de
+ * {@link ServiceFavoritos}.
+ */
 @Service
+@RequiredArgsConstructor
 public class ServiceItinerario {
 
-    private final UsuarioRepository repositorioUsuario;
-    private final ItinerarioRepository repositorioItinerario;
+    private final ItinerarioSistemaRepository repository;
 
-    public ServiceItinerario(UsuarioRepository repositorioUsuario,
-                             ItinerarioRepository itinerarioRepository) {
-        this.repositorioUsuario = repositorioUsuario;
-        this.repositorioItinerario = itinerarioRepository;
-    }
-
-
-    // Correcto:
-    @Transactional
-    public ItinerarioDTO crearItinerario(ItinerarioRequest request) {
-        // 1. Buscar el usuario REAL en la base
-        Usuario creador = repositorioUsuario.findById(request.idCreador())
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con id: " + request.idCreador()));
-
-        // 2. Construir la entity
-        Itinerario itinerario = new Itinerario();
-        itinerario.setTitulo(request.titulo());
-        itinerario.setDestino(request.destino());
-        itinerario.setDescripcion(request.descripcion());
-        itinerario.setEsPublico(Boolean.TRUE.equals(request.esPublico()));
-        itinerario.setFechaInicio(request.fechaInicio());
-        itinerario.setFechaFin(request.fechaFin());
-        itinerario.setFechaCreacion(LocalDateTime.now()); // generado en el backend
-        itinerario.setCreador(creador); // ← el usuario COMPLETO, no solo el id
-
-        // 3. Guardar
-        creador.getMis_itinerarios().add(itinerario);
-        Itinerario guardado = repositorioItinerario.save(itinerario);
-        
-        return ItinerarioDTO.from(guardado);
-    }
-
+    /**
+     * Explorar: devuelve la lista de itinerarios del sistema.
+     *
+     * @param categorias  filtro opcional. Si viene null o vacío, no filtra.
+     * @param ordenarPorFavoritos si true, ordena por cantidad de veces
+     *                            guardado como favorito (ranking). Por
+     *                            ahora, cuando {@code ordenarPorFavoritos}
+     *                            es true se ignoran las {@code categorias}
+     *                            — no combinamos ambos filtros.
+     */
     @Transactional(readOnly = true)
-    public Set<ItinerarioDTO> obtenerItinerariosPorUsuario(Long idUsuario) {
+    public List<ItinerarioSistemaResumenDTO> explorar(
+            Set<CategoriaItinerario> categorias,
+            boolean ordenarPorFavoritos) {
 
-        Usuario usuario = repositorioUsuario.findById(idUsuario)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
+        List<ItinerarioSistema> resultado;
+        if (ordenarPorFavoritos) {
+            resultado = repository.findRankingByVecesGuardado();
+        } else if (categorias == null || categorias.isEmpty()) {
+            resultado = repository.findAll();
+        } else {
+            resultado = repository.findByCategoriaIn(categorias);
+        }
 
-        return usuario.getMis_itinerarios()
-                .stream()
-                .map(ItinerarioDTO::from)
-                .collect(Collectors.toSet());
-    }
-
-    @Transactional(readOnly = true)
-    public Set<ItinerarioDTO> getItinerariosFavoritos(Long id_usuario){
-        Usuario usuario = repositorioUsuario.findById(id_usuario)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
-        return usuario.getFavoritos()
-                .stream()
-                .map(ItinerarioDTO::from)
-                .collect(Collectors.toSet());
-    }
-
-    @Transactional(readOnly = true)
-    public ItinerarioDTO obtenerItinerarioPorId(Long idItinerario) {
-        Itinerario itinerario = repositorioItinerario.findById(idItinerario)
-                .orElseThrow(() -> new ResourceNotFoundException("Itinerario no encontrado"));
-        return ItinerarioDTO.from(itinerario);
+        return resultado.stream()
+                .map(ItinerarioSistemaResumenDTO::from)
+                .toList();
     }
 
     /**
-     * Soft delete: marca el itinerario como eliminado en lugar de borrarlo
-     * de la base. Las queries posteriores lo ignoran gracias al
-     * {@code @SQLRestriction("eliminado = false")} en {@link Itinerario}.
+     * Buscar por preferencias: combina provincia (opcional), set de tags
+     * (opcional) y rango de fechas (opcional, con solapamiento) en una
+     * sola query. Si los tags vienen vacíos delega a la variante
+     * "sin tags" del repo para no pasarle un IN vacío a Hibernate.
      */
-    @Transactional
-    public void eliminarItinerario(Long idItinerario) {
-        Itinerario itinerario = repositorioItinerario.findById(idItinerario)
-                .orElseThrow(() -> new ResourceNotFoundException("Itinerario no encontrado"));
-        itinerario.setEliminado(true);
-        repositorioItinerario.save(itinerario);
+    @Transactional(readOnly = true)
+    public List<ItinerarioSistemaResumenDTO> buscarPorPreferencias(
+            Provincia provincia,
+            Set<CategoriaItinerario> tags,
+            LocalDate fechaInicio,
+            LocalDate fechaFin) {
+
+        List<ItinerarioSistema> resultado = (tags == null || tags.isEmpty())
+                ? repository.buscarPorPreferenciasSinTags(provincia, fechaInicio, fechaFin)
+                : repository.buscarPorPreferenciasConTags(provincia, tags, fechaInicio, fechaFin);
+
+        return resultado.stream()
+                .map(ItinerarioSistemaResumenDTO::from)
+                .toList();
     }
 
-    @Transactional
-    public ItinerarioDTO actualizarItinerario(Long idItinerario, RequestUpdateItinerary request) {
-        Itinerario itinerario = repositorioItinerario.findById(idItinerario)
-                .orElseThrow(() -> new ResourceNotFoundException("Itinerario no encontrado"));
+    /**
+     * Devuelve el detalle completo de un itinerario del sistema —
+     * incluyendo todos sus items para la pantalla de detalle.
+     */
+    @Transactional(readOnly = true)
+    public ItinerarioSistemaDTO obtenerPorId(Long id) {
+        ItinerarioSistema itinerario = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Itinerario no encontrado: " + id));
+        return ItinerarioSistemaDTO.from(itinerario);
+    }
 
-        if (request.nombre() != null) {
-            itinerario.setTitulo(request.nombre());
+    /**
+     * Borrado de un itinerario del sistema. CASCADE en Supabase se
+     * encarga de borrar sus items, sus etiquetas asociadas y todas las
+     * copias de usuario que lo referenciaban — junto a sus items.
+     *
+     * No incluye chequeo de rol admin todavía (la autorización por rol
+     * queda pendiente para más adelante).
+     */
+    @Transactional
+    public void eliminar(Long id) {
+        if (!repository.existsById(id)) {
+            throw new ResourceNotFoundException("Itinerario no encontrado: " + id);
         }
-        if (request.descripcion() != null) {
-            itinerario.setDescripcion(request.descripcion());
-        }
-        if (request.esPublico() != null) {
-            itinerario.setEsPublico(request.esPublico());
-        }
-        return ItinerarioDTO.from(repositorioItinerario.save(itinerario));
+        repository.deleteById(id);
     }
 }

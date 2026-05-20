@@ -19,8 +19,8 @@ public class CustomUserDetailsService implements UserDetailsService {
     private final UsuarioRepository usuarioRepository;
 
     /**
-     * Carga el Usuario activo (no eliminado) por email y lo adapta a UserDetails
-     * para que Spring Security pueda trabajar con él.
+     * Carga el Usuario por email y lo adapta a UserDetails para que Spring
+     * Security pueda trabajar con él.
      */
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {

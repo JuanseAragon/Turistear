@@ -27,9 +27,9 @@ public class AuthService {
 
         Usuario usuario = Usuario.builder()
                 .nombre(request.getNombre())
+                .apellido(request.getApellido())
                 .email(request.getEmail())
                 .contrasenia(passwordEncoder.encode(request.getContrasenia()))
-                .fechaNacimiento(request.getFechaNacimiento())
                 .tema(TipoTema.CLARO)
                 .build();
 
@@ -66,10 +66,6 @@ public class AuthService {
     public void changePassword(Long idUsuario, ChangePasswordRequest request) {
         Usuario usuario = usuarioRepository.findById(idUsuario)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
-
-        if (Boolean.TRUE.equals(usuario.getEliminado())) {
-            throw new ResourceNotFoundException("Usuario no encontrado");
-        }
 
         if (!passwordEncoder.matches(request.getContraseniaActual(), usuario.getContrasenia())) {
             throw new UnauthorizedException("La contraseña actual es incorrecta");
