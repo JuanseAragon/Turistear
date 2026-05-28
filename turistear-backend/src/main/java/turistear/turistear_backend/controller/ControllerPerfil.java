@@ -48,18 +48,4 @@ public class ControllerPerfil {
             @Valid @RequestBody UpdatePerfilRequest request) {
         return ResponseEntity.ok(usuarioService.update(id, request));
     }
-
-    @DeleteMapping("/{id}")
-    @Operation(summary = "Eliminar la cuenta de un usuario (soft delete)")
-    @ApiResponses({
-            @ApiResponse(responseCode = "204", description = "Cuenta eliminada"),
-            @ApiResponse(responseCode = "404", description = "Usuario no encontrado",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "409", description = "El usuario ya fue eliminado",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    })
-    public ResponseEntity<Void> deleteAccount(@PathVariable Long id) {
-        usuarioService.delete(id);
-        return ResponseEntity.noContent().build();
-    }
 }

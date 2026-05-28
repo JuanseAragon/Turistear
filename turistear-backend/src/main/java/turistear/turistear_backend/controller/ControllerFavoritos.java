@@ -6,62 +6,171 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import turistear.turistear_backend.dto.ErrorResponse;
-import turistear.turistear_backend.dto.ItinerarioDTO;
+import turistear.turistear_backend.dto.*;
+import turistear.turistear_backend.security.AuthUtils;
 import turistear.turistear_backend.service.ServiceFavoritos;
 
-import java.util.Set;
+import java.util.List;
 
+/**
+ * Endpoints de favoritos / copias personales del usuario. <strong>Todos
+ * requieren autenticación JWT</strong> — el {@code idUsuario} se
+ * extrae del token vía {@link AuthUtils}, nunca se pasa como path
+ * param ni query param.
+ */
 @RestController
-@RequestMapping("/api/favoritos")
-@Tag(name = "Favoritos", description = "Gestión de itinerarios favoritos del usuario")
+@RequestMapping("/favoritos")
+@RequiredArgsConstructor
+@Tag(name = "Favoritos",
+        description = "Copias personales de itinerarios del sistema con CRUD sobre sus actividades")
 public class ControllerFavoritos {
 
     private final ServiceFavoritos serviceFavoritos;
+    private final AuthUtils authUtils;
 
-    public ControllerFavoritos(ServiceFavoritos serviceFavoritos) {
-        this.serviceFavoritos = serviceFavoritos;
-    }
+    /* ---------------- copias completas ---------------- */
 
-
-    @PostMapping("/{idUsuario}/{idItinerario}")
-    @Operation(summary = "Agregar un itinerario a favoritos")
+    @PostMapping("/{idSistema}")
+    @Operation(summary = "Agregar un itinerario del sistema a favoritos (crea copia personal)")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Agregado a favoritos"),
-            @ApiResponse(responseCode = "404", description = "Usuario o itinerario no encontrado",
+            @ApiResponse(responseCode = "201", description = "Copia creada"),
+            @ApiResponse(responseCode = "404", description = "Itinerario del sistema no encontrado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "Ya tenés este itinerario en favoritos",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    public void agregarAFavoritos(
-            @PathVariable Long idUsuario,
-            @PathVariable Long idItinerario) {
-        serviceFavoritos.agregarAFavoritos(idUsuario, idItinerario);
+    public ResponseEntity<ItinerarioUsuarioDTO> agregarAFavoritos(
+            @PathVariable Long idSistema,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(serviceFavoritos.agregarAFavoritos(idUsuario, idSistema));
     }
 
-    // DELETE /api/favoritos/{idUsuario}/{idItinerario}
-    @DeleteMapping("/{idUsuario}/{idItinerario}")
+    @GetMapping
+    @Operation(summary = "Listar mis favoritos")
+    public List<ItinerarioUsuarioResumenDTO> listar(Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return serviceFavoritos.listarFavoritos(idUsuario);
+    }
+
+    @GetMapping("/activo")
+    @Operation(summary = "Obtener el favorito 'activo' (próximo o en curso)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Favorito activo encontrado"),
+            @ApiResponse(responseCode = "404", description = "No hay viajes en curso ni próximos",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ItinerarioUsuarioDTO obtenerActivo(Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return serviceFavoritos.obtenerActivo(idUsuario);
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Detalle de un favorito (con items)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Favorito encontrado"),
+            @ApiResponse(responseCode = "404", description = "Favorito no encontrado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ItinerarioUsuarioDTO obtenerDetalle(
+            @PathVariable Long id,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return serviceFavoritos.obtenerDetalle(idUsuario, id);
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Actualizar fechas de un favorito")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Favorito actualizado"),
+            @ApiResponse(responseCode = "400", description = "Fechas inválidas",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Favorito no encontrado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ItinerarioUsuarioDTO actualizar(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateItinerarioUsuarioRequest request,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return serviceFavoritos.actualizarFechas(idUsuario, id, request);
+    }
+
+    @DeleteMapping("/{id}")
     @Operation(summary = "Quitar un itinerario de favoritos")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Quitado de favoritos"),
-            @ApiResponse(responseCode = "404", description = "Usuario o itinerario no encontrado",
+            @ApiResponse(responseCode = "204", description = "Favorito eliminado"),
+            @ApiResponse(responseCode = "404", description = "Favorito no encontrado",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    public void eliminarDeFavoritos(
-            @PathVariable Long idUsuario,
-            @PathVariable Long idItinerario) {
-        serviceFavoritos.eliminarDeFavoritos(idUsuario, idItinerario);
+    public ResponseEntity<Void> eliminar(
+            @PathVariable Long id,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        serviceFavoritos.eliminarFavorito(idUsuario, id);
+        return ResponseEntity.noContent().build();
     }
 
-    // GET /api/favoritos/{idUsuario}
-    @GetMapping("/{idUsuario}")
-    @Operation(summary = "Listar los favoritos de un usuario")
+    /* ---------------- items ---------------- */
+
+    @PostMapping("/{id}/items")
+    @Operation(summary = "Agregar una actividad nueva a la copia personal")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Listado obtenido"),
-            @ApiResponse(responseCode = "404", description = "Usuario no encontrado",
+            @ApiResponse(responseCode = "201", description = "Actividad agregada"),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Favorito no encontrado",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    public Set<ItinerarioDTO> obtenerFavoritos(@PathVariable Long idUsuario) {
-        return serviceFavoritos.obtenerFavoritos(idUsuario);
+    public ResponseEntity<ItemItinerarioUsuarioDTO> agregarItem(
+            @PathVariable Long id,
+            @Valid @RequestBody ItemFavoritoRequest request,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(serviceFavoritos.agregarItem(idUsuario, id, request));
+    }
+
+    @PutMapping("/{id}/items/{itemId}")
+    @Operation(summary = "Editar una actividad de la copia personal")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Actividad actualizada"),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Favorito o item no encontrado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ItemItinerarioUsuarioDTO actualizarItem(
+            @PathVariable Long id,
+            @PathVariable Long itemId,
+            @Valid @RequestBody ItemFavoritoRequest request,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return serviceFavoritos.actualizarItem(idUsuario, id, itemId, request);
+    }
+
+    @DeleteMapping("/{id}/items/{itemId}")
+    @Operation(summary = "Eliminar una actividad de la copia personal")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Actividad eliminada"),
+            @ApiResponse(responseCode = "404", description = "Favorito o item no encontrado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<Void> eliminarItem(
+            @PathVariable Long id,
+            @PathVariable Long itemId,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        serviceFavoritos.eliminarItem(idUsuario, id, itemId);
+        return ResponseEntity.noContent().build();
     }
 }
