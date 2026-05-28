@@ -1,8 +1,5 @@
 target/
 !target/*.jar
-.mvn/
-mvnw
-mvnw.cmd
 .git/
 .gitignore
 .idea/
