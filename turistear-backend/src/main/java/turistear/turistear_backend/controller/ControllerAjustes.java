@@ -10,9 +10,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import turistear.turistear_backend.dto.ErrorResponse;
-import turistear.turistear_backend.dto.UpdatePreferenciasRequest;
-import turistear.turistear_backend.dto.UsuarioResponse;
+import turistear.turistear_backend.dto.common.ErrorResponse;
+import turistear.turistear_backend.dto.usuario.UpdatePreferenciasRequest;
+import turistear.turistear_backend.dto.usuario.UsuarioResponse;
 import turistear.turistear_backend.service.AjustesService;
 
 @RestController

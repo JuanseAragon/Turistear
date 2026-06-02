@@ -1,4 +1,4 @@
-package turistear.turistear_backend.dto;
+package turistear.turistear_backend.dto.favoritos;
 
 import turistear.turistear_backend.model.ItemItinerarioUsuario;
 
@@ -6,7 +6,7 @@ import java.time.LocalTime;
 
 /**
  * Item dentro de la copia personal del usuario. A diferencia del
- * {@link ItemItinerarioSistemaDTO}, no hay un objeto Actividad embebido:
+ * {@code ItemItinerarioSistemaDTO}, no hay un objeto Actividad embebido:
  * los datos viven directamente acá porque el usuario puede inventar
  * actividades nuevas que no existen en el catálogo del sistema.
  */
