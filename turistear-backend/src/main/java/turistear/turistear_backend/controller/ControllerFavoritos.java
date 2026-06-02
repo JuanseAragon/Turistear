@@ -12,7 +12,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import turistear.turistear_backend.dto.*;
+import turistear.turistear_backend.dto.common.ErrorResponse;
+import turistear.turistear_backend.dto.favoritos.ItinerarioUsuarioDTO;
+import turistear.turistear_backend.dto.favoritos.ItinerarioUsuarioResumenDTO;
+import turistear.turistear_backend.dto.favoritos.ItemFavoritoRequest;
+import turistear.turistear_backend.dto.favoritos.ItemItinerarioUsuarioDTO;
+import turistear.turistear_backend.dto.favoritos.UpdateItinerarioUsuarioRequest;
 import turistear.turistear_backend.security.AuthUtils;
 import turistear.turistear_backend.service.ServiceFavoritos;
 

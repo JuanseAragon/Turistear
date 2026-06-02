@@ -3,7 +3,11 @@ package turistear.turistear_backend.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import turistear.turistear_backend.dto.*;
+import turistear.turistear_backend.dto.favoritos.ItinerarioUsuarioDTO;
+import turistear.turistear_backend.dto.favoritos.ItinerarioUsuarioResumenDTO;
+import turistear.turistear_backend.dto.favoritos.ItemFavoritoRequest;
+import turistear.turistear_backend.dto.favoritos.ItemItinerarioUsuarioDTO;
+import turistear.turistear_backend.dto.favoritos.UpdateItinerarioUsuarioRequest;
 import turistear.turistear_backend.exception.ConflictException;
 import turistear.turistear_backend.exception.ResourceNotFoundException;
 import turistear.turistear_backend.model.*;
@@ -77,6 +81,10 @@ public class ServiceFavoritos {
         }
 
         ItinerarioUsuario guardado = favoritoRepo.save(copia);
+
+        sistema.setLikes(sistema.getLikes() + 1);
+        sistemaRepo.save(sistema);
+
         return ItinerarioUsuarioDTO.from(guardado);
     }
 
@@ -149,6 +157,13 @@ public class ServiceFavoritos {
     @Transactional
     public void eliminarFavorito(Long idUsuario, Long idFavorito) {
         ItinerarioUsuario favorito = cargarConOwnership(idUsuario, idFavorito);
+
+        ItinerarioSistema sistema = favorito.getItinerarioSistema();
+        if (sistema != null && sistema.getLikes() > 0) {
+            sistema.setLikes(sistema.getLikes() - 1);
+            sistemaRepo.save(sistema);
+        }
+
         // CASCADE en Supabase + orphanRemoval en JPA limpian sus items.
         favoritoRepo.delete(favorito);
     }

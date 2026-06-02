@@ -1,4 +1,4 @@
-package turistear.turistear_backend.dto;
+package turistear.turistear_backend.dto.favoritos;
 
 import turistear.turistear_backend.enumerable.CategoriaItinerario;
 import turistear.turistear_backend.enumerable.Provincia;
@@ -7,36 +7,36 @@ import turistear.turistear_backend.model.ItinerarioSistema;
 import turistear.turistear_backend.model.ItinerarioUsuario;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Vista resumida (sin items) de una copia personal del usuario.
- * Usada en {@code GET /favoritos} para listar todos los favoritos
- * sin inflar el payload.
- *
- * Incluye los metadatos que vienen del itinerario del sistema
- * referenciado (titulo, provincia, fotoPortada, etiquetas) más las
- * fechas <em>propias</em> de la copia del usuario.
+ * Vista completa de una copia personal del usuario, incluyendo todos
+ * sus items. Usada en {@code GET /favoritos/\{id\}} y
+ * {@code GET /favoritos/activo}.
  */
-public record ItinerarioUsuarioResumenDTO(
+public record ItinerarioUsuarioDTO(
         Long idItinerarioUsuario,
         Long idItinerarioSistema,
         String titulo,
+        String descripcion,
         Provincia provincia,
         LocalDate fechaInicio,
         LocalDate fechaFin,
         String fotoPortada,
         Integer duracionDias,
-        Set<CategoriaItinerario> etiquetas
+        Set<CategoriaItinerario> etiquetas,
+        List<ItemItinerarioUsuarioDTO> items
 ) {
-    public static ItinerarioUsuarioResumenDTO from(ItinerarioUsuario iu) {
+    public static ItinerarioUsuarioDTO from(ItinerarioUsuario iu) {
         if (iu == null) return null;
         ItinerarioSistema sis = iu.getItinerarioSistema();
-        return new ItinerarioUsuarioResumenDTO(
+        return new ItinerarioUsuarioDTO(
                 iu.getIdItinerarioUsuario(),
                 sis.getIdItinerario(),
                 sis.getTitulo(),
+                sis.getDescripcion(),
                 sis.getProvincia(),
                 iu.getFechaInicio(),
                 iu.getFechaFin(),
@@ -44,7 +44,10 @@ public record ItinerarioUsuarioResumenDTO(
                 sis.getDuracionDias(),
                 sis.getEtiquetas().stream()
                         .map(Etiqueta::getNombre)
-                        .collect(Collectors.toSet())
+                        .collect(Collectors.toSet()),
+                iu.getItems().stream()
+                        .map(ItemItinerarioUsuarioDTO::from)
+                        .toList()
         );
     }
 }

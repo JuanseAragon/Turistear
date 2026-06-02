@@ -3,8 +3,8 @@ package turistear.turistear_backend.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import turistear.turistear_backend.dto.ItinerarioSistemaDTO;
-import turistear.turistear_backend.dto.ItinerarioSistemaResumenDTO;
+import turistear.turistear_backend.dto.sistema.ItinerarioSistemaDTO;
+import turistear.turistear_backend.dto.sistema.ItinerarioSistemaResumenDTO;
 import turistear.turistear_backend.enumerable.CategoriaItinerario;
 import turistear.turistear_backend.enumerable.Provincia;
 import turistear.turistear_backend.exception.ResourceNotFoundException;
@@ -30,25 +30,26 @@ public class ServiceItinerario {
     /**
      * Explorar: devuelve la lista de itinerarios del sistema.
      *
-     * @param categorias  filtro opcional. Si viene null o vacío, no filtra.
-     * @param ordenarPorFavoritos si true, ordena por cantidad de veces
-     *                            guardado como favorito (ranking). Por
-     *                            ahora, cuando {@code ordenarPorFavoritos}
-     *                            es true se ignoran las {@code categorias}
-     *                            — no combinamos ambos filtros.
+     * @param categorias          filtro opcional. Si viene null o vacío, no filtra.
+     * @param ordenarPorFavoritos si true, ordena por cantidad de veces guardado
+     *                            como favorito. Se puede combinar con categorias.
      */
     @Transactional(readOnly = true)
     public List<ItinerarioSistemaResumenDTO> explorar(
             Set<CategoriaItinerario> categorias,
             boolean ordenarPorFavoritos) {
 
+        boolean tieneCategorias = categorias != null && !categorias.isEmpty();
+
         List<ItinerarioSistema> resultado;
-        if (ordenarPorFavoritos) {
+        if (ordenarPorFavoritos && tieneCategorias) {
+            resultado = repository.findRankingByVecesGuardadoConCategorias(categorias);
+        } else if (ordenarPorFavoritos) {
             resultado = repository.findRankingByVecesGuardado();
-        } else if (categorias == null || categorias.isEmpty()) {
-            resultado = repository.findAll();
-        } else {
+        } else if (tieneCategorias) {
             resultado = repository.findByCategoriaIn(categorias);
+        } else {
+            resultado = repository.findAll();
         }
 
         return resultado.stream()

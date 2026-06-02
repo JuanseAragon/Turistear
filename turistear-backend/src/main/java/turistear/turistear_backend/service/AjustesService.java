@@ -2,8 +2,8 @@ package turistear.turistear_backend.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import turistear.turistear_backend.dto.UpdatePreferenciasRequest;
-import turistear.turistear_backend.dto.UsuarioResponse;
+import turistear.turistear_backend.dto.usuario.UpdatePreferenciasRequest;
+import turistear.turistear_backend.dto.usuario.UsuarioResponse;
 import turistear.turistear_backend.exception.ResourceNotFoundException;
 import turistear.turistear_backend.model.Usuario;
 import turistear.turistear_backend.repository.UsuarioRepository;

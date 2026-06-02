@@ -1,4 +1,4 @@
-package turistear.turistear_backend.dto;
+package turistear.turistear_backend.dto.common;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 

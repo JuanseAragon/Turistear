@@ -53,6 +53,10 @@ public class ItinerarioSistema {
     @Column(name = "duracion_dias", nullable = false)
     private Integer duracionDias;
 
+    @Column(nullable = false, columnDefinition = "INTEGER DEFAULT 0")
+    @Builder.Default
+    private Integer likes = 0;
+
     @OneToMany(mappedBy = "itinerarioSistema", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("dia ASC, hora ASC")
     @Builder.Default

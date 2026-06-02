@@ -43,6 +43,21 @@ public interface ItinerarioSistemaRepository extends JpaRepository<ItinerarioSis
     List<ItinerarioSistema> findRankingByVecesGuardado();
 
     /**
+     * Ranking filtrado por categorías: itinerarios que tienen al menos
+     * una etiqueta del set indicado, ordenados por cantidad de veces guardados.
+     * Usado por {@code GET /itinerario/explorar?categoria=X&ordenar=favoritos}.
+     */
+    @Query("""
+        SELECT i FROM ItinerarioSistema i
+        LEFT JOIN ItinerarioUsuario iu ON iu.itinerarioSistema = i
+        WHERE EXISTS (SELECT 1 FROM i.etiquetas e WHERE e.nombre IN :categorias)
+        GROUP BY i.idItinerario
+        ORDER BY COUNT(iu) DESC
+    """)
+    List<ItinerarioSistema> findRankingByVecesGuardadoConCategorias(
+            @Param("categorias") Set<CategoriaItinerario> categorias);
+
+    /**
      * Búsqueda por preferencias <strong>con</strong> filtro de tags
      * (al menos una etiqueta del set debe matchear). Provincia y fechas
      * siguen siendo opcionales (null = sin filtro).

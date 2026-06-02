@@ -1,4 +1,4 @@
-package turistear.turistear_backend.dto;
+package turistear.turistear_backend.dto.sistema;
 
 import turistear.turistear_backend.model.ItemItinerarioSistema;
 

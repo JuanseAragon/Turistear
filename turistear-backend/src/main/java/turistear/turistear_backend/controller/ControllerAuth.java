@@ -12,11 +12,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import turistear.turistear_backend.dto.AuthResponse;
-import turistear.turistear_backend.dto.ChangePasswordRequest;
-import turistear.turistear_backend.dto.ErrorResponse;
-import turistear.turistear_backend.dto.LoginRequest;
-import turistear.turistear_backend.dto.RegisterRequest;
+import turistear.turistear_backend.dto.auth.AuthResponse;
+import turistear.turistear_backend.dto.auth.ChangePasswordRequest;
+import turistear.turistear_backend.dto.auth.LoginRequest;
+import turistear.turistear_backend.dto.auth.RegisterRequest;
+import turistear.turistear_backend.dto.common.ErrorResponse;
 import turistear.turistear_backend.service.AuthService;
 
 @RestController

@@ -9,9 +9,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import turistear.turistear_backend.dto.ErrorResponse;
-import turistear.turistear_backend.dto.ItinerarioSistemaDTO;
-import turistear.turistear_backend.dto.ItinerarioSistemaResumenDTO;
+import turistear.turistear_backend.dto.common.ErrorResponse;
+import turistear.turistear_backend.dto.sistema.ItinerarioSistemaDTO;
+import turistear.turistear_backend.dto.sistema.ItinerarioSistemaResumenDTO;
 import turistear.turistear_backend.enumerable.CategoriaItinerario;
 import turistear.turistear_backend.enumerable.Provincia;
 import turistear.turistear_backend.service.ServiceItinerario;
@@ -42,8 +42,8 @@ public class ControllerItinerary {
      *   <li>Con {@code ?categoria=NATURALEZA&categoria=AVENTURA}: filtra
      *       por tags (matchea con al menos una).</li>
      *   <li>Con {@code ?ordenar=favoritos}: orden por cantidad de veces
-     *       guardado como favorito (ranking). Por ahora si se combina
-     *       con categoria se ignora el filtro de categoria.</li>
+     *       guardado como favorito (ranking). Se puede combinar con
+     *       {@code categoria} para filtrar y ordenar a la vez.</li>
      * </ul>
      */
     @GetMapping("/explorar")

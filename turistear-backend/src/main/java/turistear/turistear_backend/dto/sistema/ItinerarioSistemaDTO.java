@@ -1,4 +1,4 @@
-package turistear.turistear_backend.dto;
+package turistear.turistear_backend.dto.sistema;
 
 import turistear.turistear_backend.enumerable.CategoriaItinerario;
 import turistear.turistear_backend.enumerable.Provincia;
@@ -6,19 +6,17 @@ import turistear.turistear_backend.model.Etiqueta;
 import turistear.turistear_backend.model.ItinerarioSistema;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Vista resumida (sin items) de un itinerario del sistema. Es la
- * representación que viaja en las listas — Explorar, Buscar por
- * preferencias y Ranking — para no inflar el payload con todos los
- * items de cada itinerario.
- *
- * Para el detalle completo (incluyendo items) usar
- * {@link ItinerarioSistemaDTO}.
+ * Vista completa de un itinerario del sistema, con todos sus items
+ * cargados. Usada en el endpoint de detalle
+ * {@code GET /itinerario/\{id\}}. Para los listados (Explorar, Buscar,
+ * Ranking) usar {@link ItinerarioSistemaResumenDTO} que omite los items.
  */
-public record ItinerarioSistemaResumenDTO(
+public record ItinerarioSistemaDTO(
         Long idItinerario,
         String titulo,
         String descripcion,
@@ -27,11 +25,13 @@ public record ItinerarioSistemaResumenDTO(
         LocalDate fechaFin,
         String fotoPortada,
         Integer duracionDias,
-        Set<CategoriaItinerario> etiquetas
+        Set<CategoriaItinerario> etiquetas,
+        List<ItemItinerarioSistemaDTO> items,
+        Integer likes
 ) {
-    public static ItinerarioSistemaResumenDTO from(ItinerarioSistema i) {
+    public static ItinerarioSistemaDTO from(ItinerarioSistema i) {
         if (i == null) return null;
-        return new ItinerarioSistemaResumenDTO(
+        return new ItinerarioSistemaDTO(
                 i.getIdItinerario(),
                 i.getTitulo(),
                 i.getDescripcion(),
@@ -42,7 +42,11 @@ public record ItinerarioSistemaResumenDTO(
                 i.getDuracionDias(),
                 i.getEtiquetas().stream()
                         .map(Etiqueta::getNombre)
-                        .collect(Collectors.toSet())
+                        .collect(Collectors.toSet()),
+                i.getItems().stream()
+                        .map(ItemItinerarioSistemaDTO::from)
+                        .toList(),
+                i.getLikes()
         );
     }
 }
