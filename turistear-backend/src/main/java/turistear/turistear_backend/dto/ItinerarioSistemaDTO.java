@@ -26,7 +26,8 @@ public record ItinerarioSistemaDTO(
         String fotoPortada,
         Integer duracionDias,
         Set<CategoriaItinerario> etiquetas,
-        List<ItemItinerarioSistemaDTO> items
+        List<ItemItinerarioSistemaDTO> items,
+        Integer likes
 ) {
     public static ItinerarioSistemaDTO from(ItinerarioSistema i) {
         if (i == null) return null;
@@ -44,7 +45,8 @@ public record ItinerarioSistemaDTO(
                         .collect(Collectors.toSet()),
                 i.getItems().stream()
                         .map(ItemItinerarioSistemaDTO::from)
-                        .toList()
+                        .toList(),
+                i.getLikes()
         );
     }
 }

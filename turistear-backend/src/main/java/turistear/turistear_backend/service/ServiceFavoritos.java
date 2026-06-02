@@ -77,6 +77,10 @@ public class ServiceFavoritos {
         }
 
         ItinerarioUsuario guardado = favoritoRepo.save(copia);
+
+        sistema.setLikes(sistema.getLikes() + 1);
+        sistemaRepo.save(sistema);
+
         return ItinerarioUsuarioDTO.from(guardado);
     }
 
@@ -149,6 +153,13 @@ public class ServiceFavoritos {
     @Transactional
     public void eliminarFavorito(Long idUsuario, Long idFavorito) {
         ItinerarioUsuario favorito = cargarConOwnership(idUsuario, idFavorito);
+
+        ItinerarioSistema sistema = favorito.getItinerarioSistema();
+        if (sistema != null && sistema.getLikes() > 0) {
+            sistema.setLikes(sistema.getLikes() - 1);
+            sistemaRepo.save(sistema);
+        }
+
         // CASCADE en Supabase + orphanRemoval en JPA limpian sus items.
         favoritoRepo.delete(favorito);
     }

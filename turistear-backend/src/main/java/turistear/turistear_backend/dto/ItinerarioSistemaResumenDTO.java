@@ -27,7 +27,8 @@ public record ItinerarioSistemaResumenDTO(
         LocalDate fechaFin,
         String fotoPortada,
         Integer duracionDias,
-        Set<CategoriaItinerario> etiquetas
+        Set<CategoriaItinerario> etiquetas,
+        Integer likes
 ) {
     public static ItinerarioSistemaResumenDTO from(ItinerarioSistema i) {
         if (i == null) return null;
@@ -42,7 +43,8 @@ public record ItinerarioSistemaResumenDTO(
                 i.getDuracionDias(),
                 i.getEtiquetas().stream()
                         .map(Etiqueta::getNombre)
-                        .collect(Collectors.toSet())
+                        .collect(Collectors.toSet()),
+                i.getLikes()
         );
     }
 }
