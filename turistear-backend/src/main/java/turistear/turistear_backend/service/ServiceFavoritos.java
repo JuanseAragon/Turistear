@@ -47,7 +47,7 @@ public class ServiceFavoritos {
      * usuario las puede editar después por {@code PUT /favoritos/\{id\}}.
      */
     @Transactional
-    public ItinerarioUsuarioDTO agregarAFavoritos(Long idUsuario, Long idSistema) {
+    public ItinerarioUsuarioResumenDTO agregarAFavoritos(Long idUsuario, Long idSistema) {
         if (favoritoRepo.existsByUsuario_IdUsuarioAndItinerarioSistema_IdItinerario(idUsuario, idSistema)) {
             throw new ConflictException("Ya tenés este itinerario en favoritos");
         }
@@ -81,11 +81,11 @@ public class ServiceFavoritos {
         }
 
         ItinerarioUsuario guardado = favoritoRepo.save(copia);
-
         sistema.setLikes(sistema.getLikes() + 1);
         sistemaRepo.save(sistema);
 
-        return ItinerarioUsuarioDTO.from(guardado);
+
+        return ItinerarioUsuarioResumenDTO.from(guardado);
     }
 
     /* ---------------------------------------------------------------- *
