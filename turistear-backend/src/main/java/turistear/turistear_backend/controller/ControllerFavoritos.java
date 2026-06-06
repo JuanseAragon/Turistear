@@ -50,7 +50,7 @@ public class ControllerFavoritos {
             @ApiResponse(responseCode = "409", description = "Ya tenés este itinerario en favoritos",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    public ResponseEntity<ItinerarioUsuarioDTO> agregarAFavoritos(
+    public ResponseEntity<ItinerarioUsuarioResumenDTO> agregarAFavoritos(
             @PathVariable Long idSistema,
             Authentication authentication) {
         Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
