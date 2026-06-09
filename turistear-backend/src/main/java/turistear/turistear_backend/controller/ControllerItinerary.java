@@ -35,28 +35,24 @@ public class ControllerItinerary {
     private final ServiceItinerario serviceItinerario;
 
     /**
-     * Listado de la sección Explorar.
+     * Listado de la sección Explorar. Siempre ordenado por popularidad
+     * (campo {@code likes}, descendente).
      *
      * <ul>
      *   <li>Sin parámetros: trae todos los itinerarios del sistema.</li>
      *   <li>Con {@code ?categoria=NATURALEZA&categoria=AVENTURA}: filtra
      *       por tags (matchea con al menos una).</li>
-     *   <li>Con {@code ?ordenar=favoritos}: orden por cantidad de veces
-     *       guardado como favorito (ranking). Se puede combinar con
-     *       {@code categoria} para filtrar y ordenar a la vez.</li>
      * </ul>
      */
     @GetMapping("/explorar")
-    @Operation(summary = "Listar itinerarios del sistema (con filtros opcionales)")
+    @Operation(summary = "Listar itinerarios del sistema ordenados por likes (con filtro opcional de categoría)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Listado obtenido")
     })
     public List<ItinerarioSistemaResumenDTO> explorar(
-            @RequestParam(name = "categoria", required = false) Set<CategoriaItinerario> categorias,
-            @RequestParam(name = "ordenar", required = false) String ordenar) {
+            @RequestParam(name = "categoria", required = false) Set<CategoriaItinerario> categorias) {
 
-        boolean ordenarPorFavoritos = "favoritos".equalsIgnoreCase(ordenar);
-        return serviceItinerario.explorar(categorias, ordenarPorFavoritos);
+        return serviceItinerario.explorar(categorias);
     }
 
     /**

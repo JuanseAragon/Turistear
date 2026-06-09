@@ -16,23 +16,12 @@ import java.util.Set;
 public interface ItinerarioSistemaRepository extends JpaRepository<ItinerarioSistema, Long> {
 
     /**
-     * Filtro por una o más categorías. Devuelve los itinerarios que tienen
-     * al menos una etiqueta del set indicado. Usado por
-     * {@code GET /itinerario/explorar?categoria=...}.
-     */
-    @Query("""
-        SELECT DISTINCT i FROM ItinerarioSistema i
-        JOIN i.etiquetas e
-        WHERE e.nombre IN :categorias
-    """)
-    List<ItinerarioSistema> findByCategoriaIn(@Param("categorias") Set<CategoriaItinerario> categorias);
-
-    /**
-     * Ranking de itinerarios ordenados por popularidad, leyendo el contador
-     * desnormalizado {@code likes} (lo mantiene ServiceFavoritos: +1 al
-     * guardar como favorito, -1 al quitarlo). Más simple y barato que contar
-     * en vivo las filas de itinerarios_usuario con un JOIN + GROUP BY.
-     * Usado por {@code GET /itinerario/explorar?ordenar=favoritos}.
+     * Lista todos los itinerarios del sistema ordenados por popularidad,
+     * leyendo el contador desnormalizado {@code likes} (lo mantiene
+     * ServiceFavoritos: +1 al guardar como favorito, -1 al quitarlo). Más
+     * simple y barato que contar en vivo las filas de itinerarios_usuario
+     * con un JOIN + GROUP BY.
+     * Usado por {@code GET /itinerario/explorar} (orden por defecto).
      */
     @Query("""
         SELECT i FROM ItinerarioSistema i
@@ -41,10 +30,10 @@ public interface ItinerarioSistemaRepository extends JpaRepository<ItinerarioSis
     List<ItinerarioSistema> findRankingByVecesGuardado();
 
     /**
-     * Ranking filtrado por categorías: itinerarios que tienen al menos
-     * una etiqueta del set indicado, ordenados por popularidad según el
-     * contador desnormalizado {@code likes}.
-     * Usado por {@code GET /itinerario/explorar?categoria=X&ordenar=favoritos}.
+     * Lista los itinerarios de una o más categorías (al menos una etiqueta
+     * del set indicado), ordenados por popularidad según el contador
+     * desnormalizado {@code likes}.
+     * Usado por {@code GET /itinerario/explorar?categoria=X}.
      */
     @Query("""
         SELECT i FROM ItinerarioSistema i
