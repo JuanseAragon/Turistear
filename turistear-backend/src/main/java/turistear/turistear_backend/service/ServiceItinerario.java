@@ -28,29 +28,19 @@ public class ServiceItinerario {
     private final ItinerarioSistemaRepository repository;
 
     /**
-     * Explorar: devuelve la lista de itinerarios del sistema.
+     * Explorar: devuelve la lista de itinerarios del sistema, siempre
+     * ordenada por popularidad (campo {@code likes}, descendente).
      *
-     * @param categorias          filtro opcional. Si viene null o vacío, no filtra.
-     * @param ordenarPorFavoritos si true, ordena por cantidad de veces guardado
-     *                            como favorito. Se puede combinar con categorias.
+     * @param categorias filtro opcional. Si viene null o vacío, no filtra.
      */
     @Transactional(readOnly = true)
-    public List<ItinerarioSistemaResumenDTO> explorar(
-            Set<CategoriaItinerario> categorias,
-            boolean ordenarPorFavoritos) {
+    public List<ItinerarioSistemaResumenDTO> explorar(Set<CategoriaItinerario> categorias) {
 
         boolean tieneCategorias = categorias != null && !categorias.isEmpty();
 
-        List<ItinerarioSistema> resultado;
-        if (ordenarPorFavoritos && tieneCategorias) {
-            resultado = repository.findRankingByVecesGuardadoConCategorias(categorias);
-        } else if (ordenarPorFavoritos) {
-            resultado = repository.findRankingByVecesGuardado();
-        } else if (tieneCategorias) {
-            resultado = repository.findByCategoriaIn(categorias);
-        } else {
-            resultado = repository.findAll();
-        }
+        List<ItinerarioSistema> resultado = tieneCategorias
+                ? repository.findRankingByVecesGuardadoConCategorias(categorias)
+                : repository.findRankingByVecesGuardado();
 
         return resultado.stream()
                 .map(ItinerarioSistemaResumenDTO::from)
