@@ -37,7 +37,6 @@ public class UsuarioService {
                 .nombre(usuario.getNombre())
                 .apellido(usuario.getApellido())
                 .email(usuario.getEmail())
-                .tema(usuario.getTema())
                 .fotoPerfil(usuario.getFotoPerfil())
                 .build();
     }

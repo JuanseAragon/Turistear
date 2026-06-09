@@ -2,7 +2,6 @@ package turistear.turistear_backend.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import turistear.turistear_backend.enumerable.TipoTema;
 
 @Entity
 @Table(name = "usuarios")
@@ -34,8 +33,4 @@ public class Usuario {
 
     @Column(name = "foto_perfil")
     private String fotoPerfil;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private TipoTema tema;
 }
