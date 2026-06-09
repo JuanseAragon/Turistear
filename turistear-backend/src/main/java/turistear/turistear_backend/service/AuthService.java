@@ -7,7 +7,6 @@ import turistear.turistear_backend.dto.auth.AuthResponse;
 import turistear.turistear_backend.dto.auth.ChangePasswordRequest;
 import turistear.turistear_backend.dto.auth.LoginRequest;
 import turistear.turistear_backend.dto.auth.RegisterRequest;
-import turistear.turistear_backend.enumerable.TipoTema;
 import turistear.turistear_backend.exception.ConflictException;
 import turistear.turistear_backend.exception.ResourceNotFoundException;
 import turistear.turistear_backend.exception.UnauthorizedException;
@@ -33,7 +32,6 @@ public class AuthService {
                 .apellido(request.getApellido())
                 .email(request.getEmail())
                 .contrasenia(passwordEncoder.encode(request.getContrasenia()))
-                .tema(TipoTema.CLARO)
                 .build();
 
         usuario = usuarioRepository.save(usuario);
