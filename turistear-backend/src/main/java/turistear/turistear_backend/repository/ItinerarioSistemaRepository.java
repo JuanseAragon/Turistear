@@ -28,31 +28,28 @@ public interface ItinerarioSistemaRepository extends JpaRepository<ItinerarioSis
     List<ItinerarioSistema> findByCategoriaIn(@Param("categorias") Set<CategoriaItinerario> categorias);
 
     /**
-     * Ranking de itinerarios ordenados por cantidad de veces que fueron
-     * guardados como favoritos (cada fila de {@code itinerarios_usuario}
-     * cuenta como un guardado). Como Usuario ya no mantiene una colección
-     * inversa, contamos cruzando contra ItinerarioUsuario con un join ON.
+     * Ranking de itinerarios ordenados por popularidad, leyendo el contador
+     * desnormalizado {@code likes} (lo mantiene ServiceFavoritos: +1 al
+     * guardar como favorito, -1 al quitarlo). Más simple y barato que contar
+     * en vivo las filas de itinerarios_usuario con un JOIN + GROUP BY.
      * Usado por {@code GET /itinerario/explorar?ordenar=favoritos}.
      */
     @Query("""
         SELECT i FROM ItinerarioSistema i
-        LEFT JOIN ItinerarioUsuario iu ON iu.itinerarioSistema = i
-        GROUP BY i.idItinerario
-        ORDER BY COUNT(iu) DESC
+        ORDER BY i.likes DESC
     """)
     List<ItinerarioSistema> findRankingByVecesGuardado();
 
     /**
      * Ranking filtrado por categorías: itinerarios que tienen al menos
-     * una etiqueta del set indicado, ordenados por cantidad de veces guardados.
+     * una etiqueta del set indicado, ordenados por popularidad según el
+     * contador desnormalizado {@code likes}.
      * Usado por {@code GET /itinerario/explorar?categoria=X&ordenar=favoritos}.
      */
     @Query("""
         SELECT i FROM ItinerarioSistema i
-        LEFT JOIN ItinerarioUsuario iu ON iu.itinerarioSistema = i
         WHERE EXISTS (SELECT 1 FROM i.etiquetas e WHERE e.nombre IN :categorias)
-        GROUP BY i.idItinerario
-        ORDER BY COUNT(iu) DESC
+        ORDER BY i.likes DESC
     """)
     List<ItinerarioSistema> findRankingByVecesGuardadoConCategorias(
             @Param("categorias") Set<CategoriaItinerario> categorias);
