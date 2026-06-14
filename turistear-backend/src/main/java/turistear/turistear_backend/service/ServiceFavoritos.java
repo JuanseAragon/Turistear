@@ -116,9 +116,16 @@ public class ServiceFavoritos {
      */
     @Transactional(readOnly = true)
     public ItinerarioUsuarioDTO obtenerActivo(Long idUsuario) {
+        LocalDate hoy = LocalDate.now();
+        // Prioridad 1: el favorito fijado con la tachuela, siempre que su
+        // viaje siga vigente (fechaFin >= hoy). Si ya venció, no cuenta.
+        // Prioridad 2 (fallback): el de fecha más próxima que no terminó,
+        // que es el comportamiento histórico cuando no hay ninguno fijado.
         ItinerarioUsuario activo = favoritoRepo
-                .findFirstByUsuario_IdUsuarioAndFechaFinGreaterThanEqualOrderByFechaInicioAsc(
-                        idUsuario, LocalDate.now())
+                .findByUsuario_IdUsuarioAndEsPinnedTrueAndFechaFinGreaterThanEqual(idUsuario, hoy)
+                .or(() -> favoritoRepo
+                        .findFirstByUsuario_IdUsuarioAndFechaFinGreaterThanEqualOrderByFechaInicioAsc(
+                                idUsuario, hoy))
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "No tenés ningún viaje en curso ni próximo"));
         return ItinerarioUsuarioDTO.from(activo);
@@ -166,6 +173,38 @@ public class ServiceFavoritos {
 
         // CASCADE en Supabase + orphanRemoval en JPA limpian sus items.
         favoritoRepo.delete(favorito);
+    }
+
+    /* ---------------------------------------------------------------- *
+     *  PATCH /favoritos/{id}/pin                                       *
+     * ---------------------------------------------------------------- */
+
+    /**
+     * Fija o desfija un favorito como el "activo" del Home (la tachuela).
+     * Es exclusivo: al fijar uno se desfija el que estuviera fijado. Si
+     * el favorito que se toca ya estaba fijado, queda desfijado (toggle).
+     */
+    @Transactional
+    public void togglePin(Long idUsuario, Long idFavorito) {
+        ItinerarioUsuario objetivo = cargarConOwnership(idUsuario, idFavorito);
+
+        // Capturamos el estado ANTES de tocar nada: si el objetivo ya
+        // estaba fijado, el findBy de abajo devuelve la MISMA instancia
+        // (mismo registro en la sesión de Hibernate) y leer isEsPinned()
+        // después daría un valor ya modificado.
+        boolean objetivoYaEstaba = objetivo.isEsPinned();
+
+        // Solo puede haber uno fijado a la vez: desfijamos el actual (si hay).
+        favoritoRepo.findByUsuario_IdUsuarioAndEsPinnedTrue(idUsuario)
+                .ifPresent(actual -> actual.setEsPinned(false));
+
+        // Si el objetivo no era el que estaba fijado, lo fijamos. Si lo
+        // era, ya quedó en false arriba (toggle off).
+        if (!objetivoYaEstaba) {
+            objetivo.setEsPinned(true);
+        }
+        // Sin save() explícito: las entidades están manejadas dentro de la
+        // transacción, el flush al cerrar persiste los cambios (dirty checking).
     }
 
     /* ---------------------------------------------------------------- *

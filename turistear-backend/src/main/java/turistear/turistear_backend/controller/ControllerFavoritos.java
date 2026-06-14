@@ -124,6 +124,21 @@ public class ControllerFavoritos {
         return ResponseEntity.noContent().build();
     }
 
+    @PatchMapping("/{id}/pin")
+    @Operation(summary = "Fijar/desfijar un favorito como el activo del Home (tachuela)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Pin actualizado"),
+            @ApiResponse(responseCode = "404", description = "Favorito no encontrado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<Void> togglePin(
+            @PathVariable Long id,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        serviceFavoritos.togglePin(idUsuario, id);
+        return ResponseEntity.noContent().build();
+    }
+
     /* ---------------- items ---------------- */
 
     @PostMapping("/{id}/items")

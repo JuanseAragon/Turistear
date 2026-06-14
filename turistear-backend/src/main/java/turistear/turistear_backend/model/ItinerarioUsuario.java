@@ -45,6 +45,17 @@ public class ItinerarioUsuario {
     @Column(name = "fecha_fin", nullable = false)
     private LocalDate fechaFin;
 
+    /**
+     * Marca la "tachuela": el favorito que el usuario eligió como activo
+     * para mostrar en el Home. Es exclusivo — solo uno puede estar en
+     * true a la vez (lo garantiza {@code ServiceFavoritos.togglePin}).
+     * Default false para que los registros existentes no rompan al
+     * agregar la columna.
+     */
+    @Column(name = "es_pinned", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
+    @Builder.Default
+    private boolean esPinned = false;
+
     @OneToMany(mappedBy = "itinerarioUsuario", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("dia ASC, hora ASC")
     @Builder.Default
