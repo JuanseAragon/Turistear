@@ -28,7 +28,8 @@ public record ItinerarioUsuarioResumenDTO(
         LocalDate fechaFin,
         String fotoPortada,
         Integer duracionDias,
-        Set<CategoriaItinerario> etiquetas
+        Set<CategoriaItinerario> etiquetas,
+        boolean esPinned
 ) {
     public static ItinerarioUsuarioResumenDTO from(ItinerarioUsuario iu) {
         if (iu == null) return null;
@@ -44,7 +45,8 @@ public record ItinerarioUsuarioResumenDTO(
                 sis.getDuracionDias(),
                 sis.getEtiquetas().stream()
                         .map(Etiqueta::getNombre)
-                        .collect(Collectors.toSet())
+                        .collect(Collectors.toSet()),
+                iu.isEsPinned()
         );
     }
 }

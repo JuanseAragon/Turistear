@@ -67,4 +67,12 @@ public interface ItinerarioUsuarioRepository extends JpaRepository<ItinerarioUsu
      */
     boolean existsByUsuario_IdUsuarioAndItinerarioSistema_IdItinerario(
             Long idUsuario, Long idItinerarioSistema);
+
+    /**
+     * Favorito marcado con la "tachuela" por el usuario. Solo puede
+     * haber uno en true a la vez — la exclusividad la garantiza
+     * {@code ServiceFavoritos.togglePin}. Lo usa {@code obtenerActivo}
+     * para priorizar el fijado por sobre el de fecha más próxima.
+     */
+    Optional<ItinerarioUsuario> findByUsuario_IdUsuarioAndEsPinnedTrue(Long idUsuario);
 }
