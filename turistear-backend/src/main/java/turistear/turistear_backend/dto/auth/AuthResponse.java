@@ -15,4 +15,5 @@ public class AuthResponse {
     private Long idUsuario;
     private String nombre;
     private String email;
+    private String fotoPerfil;
 }

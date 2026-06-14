@@ -43,6 +43,7 @@ public class AuthService {
                 .idUsuario(usuario.getIdUsuario())
                 .nombre(usuario.getNombre())
                 .email(usuario.getEmail())
+                .fotoPerfil(usuario.getFotoPerfil())
                 .build();
     }
 
@@ -61,6 +62,7 @@ public class AuthService {
                 .idUsuario(usuario.getIdUsuario())
                 .nombre(usuario.getNombre())
                 .email(usuario.getEmail())
+                .fotoPerfil(usuario.getFotoPerfil())
                 .build();
     }
 
