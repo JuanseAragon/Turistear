@@ -116,14 +116,16 @@ public class ServiceFavoritos {
      */
     @Transactional(readOnly = true)
     public ItinerarioUsuarioDTO obtenerActivo(Long idUsuario) {
-        // Prioridad 1: el favorito que el usuario fijó con la tachuela.
+        LocalDate hoy = LocalDate.now();
+        // Prioridad 1: el favorito fijado con la tachuela, siempre que su
+        // viaje siga vigente (fechaFin >= hoy). Si ya venció, no cuenta.
         // Prioridad 2 (fallback): el de fecha más próxima que no terminó,
         // que es el comportamiento histórico cuando no hay ninguno fijado.
         ItinerarioUsuario activo = favoritoRepo
-                .findByUsuario_IdUsuarioAndEsPinnedTrue(idUsuario)
+                .findByUsuario_IdUsuarioAndEsPinnedTrueAndFechaFinGreaterThanEqual(idUsuario, hoy)
                 .or(() -> favoritoRepo
                         .findFirstByUsuario_IdUsuarioAndFechaFinGreaterThanEqualOrderByFechaInicioAsc(
-                                idUsuario, LocalDate.now()))
+                                idUsuario, hoy))
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "No tenés ningún viaje en curso ni próximo"));
         return ItinerarioUsuarioDTO.from(activo);

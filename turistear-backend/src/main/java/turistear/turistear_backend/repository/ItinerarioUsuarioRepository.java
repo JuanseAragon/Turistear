@@ -69,10 +69,19 @@ public interface ItinerarioUsuarioRepository extends JpaRepository<ItinerarioUsu
             Long idUsuario, Long idItinerarioSistema);
 
     /**
-     * Favorito marcado con la "tachuela" por el usuario. Solo puede
-     * haber uno en true a la vez — la exclusividad la garantiza
-     * {@code ServiceFavoritos.togglePin}. Lo usa {@code obtenerActivo}
-     * para priorizar el fijado por sobre el de fecha más próxima.
+     * Favorito marcado con la "tachuela", sin filtrar por fecha. Lo usa
+     * {@code togglePin} para encontrar el fijado actual y desfijarlo —
+     * tiene que hallarlo aunque su viaje ya haya vencido, para no dejar
+     * dos fijados al pinear otro. Solo puede haber uno a la vez.
      */
     Optional<ItinerarioUsuario> findByUsuario_IdUsuarioAndEsPinnedTrue(Long idUsuario);
+
+    /**
+     * Favorito fijado con la "tachuela" y todavía vigente
+     * ({@code fechaFin >= hoy}). Lo usa {@code obtenerActivo}: el fijado
+     * solo cuenta como activo mientras su viaje no haya terminado; si ya
+     * venció se ignora y la lógica cae al fallback por fecha más próxima.
+     */
+    Optional<ItinerarioUsuario> findByUsuario_IdUsuarioAndEsPinnedTrueAndFechaFinGreaterThanEqual(
+            Long idUsuario, LocalDate hoy);
 }
