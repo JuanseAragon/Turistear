@@ -165,14 +165,14 @@ public class ServiceFavoritos {
     public void eliminarFavorito(Long idUsuario, Long idFavorito) {
         ItinerarioUsuario favorito = cargarConOwnership(idUsuario, idFavorito);
 
-        ItinerarioSistema sistema = favorito.getItinerarioSistema();
-        if (sistema != null && sistema.getLikes() > 0) {
-            sistema.setLikes(sistema.getLikes() - 1);
-            sistemaRepo.save(sistema);
-        }
+        // getIdItinerario() lee solo la FK ya cargada en la fila de
+        // itinerarios_usuario — no dispara SELECT sobre itinerarios_sistema.
+        Long idSistema = favorito.getItinerarioSistema().getIdItinerario();
+        sistemaRepo.decrementarLikes(idSistema);
 
-        // CASCADE en Supabase + orphanRemoval en JPA limpian sus items.
-        favoritoRepo.delete(favorito);
+        // Bulk DELETE en lugar de SELECT + N DELETEs individuales por orphanRemoval.
+        itemRepo.deleteByItinerarioUsuarioId(idFavorito);
+        favoritoRepo.deleteDirectlyById(idFavorito);
     }
 
     /* ---------------------------------------------------------------- *

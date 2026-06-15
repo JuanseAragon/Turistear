@@ -2,6 +2,7 @@ package turistear.turistear_backend.repository;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -116,4 +117,14 @@ public interface ItinerarioSistemaRepository extends JpaRepository<ItinerarioSis
     @EntityGraph(attributePaths = {"items", "items.actividad"})
     @Query("SELECT i FROM ItinerarioSistema i WHERE i.idItinerario = :id")
     Optional<ItinerarioSistema> findDetalleById(@Param("id") Long id);
+
+    /**
+     * Decrementa el contador de likes en una sola query de escritura, sin
+     * necesidad de cargar la entidad. El {@code AND i.likes > 0} previene
+     * que quede negativo si hubiera inconsistencias de datos.
+     * Usado por {@code eliminarFavorito} al quitar una copia personal.
+     */
+    @Modifying
+    @Query("UPDATE ItinerarioSistema i SET i.likes = i.likes - 1 WHERE i.idItinerario = :id AND i.likes > 0")
+    void decrementarLikes(@Param("id") Long id);
 }

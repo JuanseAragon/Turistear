@@ -2,6 +2,7 @@ package turistear.turistear_backend.repository;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -91,4 +92,14 @@ public interface ItinerarioUsuarioRepository extends JpaRepository<ItinerarioUsu
      */
     Optional<ItinerarioUsuario> findByUsuario_IdUsuarioAndEsPinnedTrueAndFechaFinGreaterThanEqual(
             Long idUsuario, LocalDate hoy);
+
+    /**
+     * Elimina el favorito directamente por id, sin pasar por el ciclo de
+     * vida de la entidad (no dispara {@code orphanRemoval} ni cascade de JPA).
+     * Llamar DESPUÉS de {@code itemRepo.deleteByItinerarioUsuarioId}, que ya
+     * limpió los items en bulk — así el delete del padre no necesita cargarlos.
+     */
+    @Modifying
+    @Query("DELETE FROM ItinerarioUsuario iu WHERE iu.idItinerarioUsuario = :id")
+    void deleteDirectlyById(@Param("id") Long id);
 }
