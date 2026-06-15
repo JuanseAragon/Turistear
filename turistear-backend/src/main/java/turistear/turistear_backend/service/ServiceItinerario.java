@@ -75,7 +75,7 @@ public class ServiceItinerario {
      */
     @Transactional(readOnly = true)
     public ItinerarioSistemaDTO obtenerPorId(Long id) {
-        ItinerarioSistema itinerario = repository.findById(id)
+        ItinerarioSistema itinerario = repository.findDetalleById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Itinerario no encontrado: " + id));
         return ItinerarioSistemaDTO.from(itinerario);

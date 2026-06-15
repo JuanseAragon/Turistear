@@ -1,5 +1,6 @@
 package turistear.turistear_backend.repository;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,6 +11,7 @@ import turistear.turistear_backend.model.ItinerarioSistema;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Repository
@@ -22,9 +24,14 @@ public interface ItinerarioSistemaRepository extends JpaRepository<ItinerarioSis
      * simple y barato que contar en vivo las filas de itinerarios_usuario
      * con un JOIN + GROUP BY.
      * Usado por {@code GET /itinerario/explorar} (orden por defecto).
+     * <p>
+     * {@code @EntityGraph} trae las etiquetas en la misma query (LEFT JOIN)
+     * para evitar el N+1 al armar el ResumenDTO. {@code DISTINCT} descarta
+     * las filas duplicadas que ese JOIN de colección genera.
      */
+    @EntityGraph(attributePaths = "etiquetas")
     @Query("""
-        SELECT i FROM ItinerarioSistema i
+        SELECT DISTINCT i FROM ItinerarioSistema i
         ORDER BY i.likes DESC
     """)
     List<ItinerarioSistema> findRankingByVecesGuardado();
@@ -34,9 +41,13 @@ public interface ItinerarioSistemaRepository extends JpaRepository<ItinerarioSis
      * del set indicado), ordenados por popularidad según el contador
      * desnormalizado {@code likes}.
      * Usado por {@code GET /itinerario/explorar?categoria=X}.
+     * <p>
+     * El filtro va por {@code EXISTS} (no por JOIN) para no interferir con
+     * el {@code @EntityGraph} que trae todas las etiquetas de cada itinerario.
      */
+    @EntityGraph(attributePaths = "etiquetas")
     @Query("""
-        SELECT i FROM ItinerarioSistema i
+        SELECT DISTINCT i FROM ItinerarioSistema i
         WHERE EXISTS (SELECT 1 FROM i.etiquetas e WHERE e.nombre IN :categorias)
         ORDER BY i.likes DESC
     """)
@@ -51,12 +62,17 @@ public interface ItinerarioSistemaRepository extends JpaRepository<ItinerarioSis
      * Sobre las fechas: la doc del schema aclara que el match es por
      * <em>solapamiento</em> (overlap), no contención — si el usuario busca
      * del 1 al 7 de julio puede aparecer un itinerario del 6 al 9.
+     * <p>
+     * El filtro de tags va por {@code EXISTS} (antes era un JOIN directo):
+     * así el {@code @EntityGraph} trae TODAS las etiquetas de cada
+     * itinerario sin que el filtro las recorte. Mismos resultados que antes,
+     * pero sin el N+1 del ResumenDTO.
      */
+    @EntityGraph(attributePaths = "etiquetas")
     @Query("""
         SELECT DISTINCT i FROM ItinerarioSistema i
-        JOIN i.etiquetas e
         WHERE (:provincia IS NULL OR i.provincia = :provincia)
-          AND e.nombre IN :tags
+          AND EXISTS (SELECT 1 FROM i.etiquetas e WHERE e.nombre IN :tags)
           AND (i.fechaFin >= COALESCE(:fechaInicio, i.fechaFin))
           AND (i.fechaInicio <= COALESCE(:fechaFin, i.fechaInicio))
     """)
@@ -71,9 +87,13 @@ public interface ItinerarioSistemaRepository extends JpaRepository<ItinerarioSis
      * service elige qué método llamar según si el set de tags vino vacío
      * o nulo — evita pasarle un IN con colección vacía a Hibernate, que
      * tiene comportamiento ambiguo entre versiones.
+     * <p>
+     * {@code @EntityGraph} + {@code DISTINCT}: trae las etiquetas en la
+     * misma query para evitar el N+1 del ResumenDTO.
      */
+    @EntityGraph(attributePaths = "etiquetas")
     @Query("""
-        SELECT i FROM ItinerarioSistema i
+        SELECT DISTINCT i FROM ItinerarioSistema i
         WHERE (:provincia IS NULL OR i.provincia = :provincia)
           AND (i.fechaFin >= COALESCE(:fechaInicio, i.fechaFin))
           AND (i.fechaInicio <= COALESCE(:fechaFin, i.fechaInicio))
@@ -82,4 +102,18 @@ public interface ItinerarioSistemaRepository extends JpaRepository<ItinerarioSis
             @Param("provincia") Provincia provincia,
             @Param("fechaInicio") LocalDate fechaInicio,
             @Param("fechaFin") LocalDate fechaFin);
+
+    /**
+     * Detalle completo de un itinerario del sistema con sus items y la
+     * actividad de cada item, traídos en una sola query. Reemplaza al
+     * {@code findById} genérico en el endpoint de detalle para evitar el
+     * N+1 sobre la tabla actividades (una query por item).
+     * <p>
+     * Solo fetchea la colección {@code items} (no las etiquetas a la vez)
+     * para no generar un producto cartesiano entre dos colecciones; las
+     * etiquetas quedan lazy — una sola query extra, al ser un único itinerario.
+     */
+    @EntityGraph(attributePaths = {"items", "items.actividad"})
+    @Query("SELECT i FROM ItinerarioSistema i WHERE i.idItinerario = :id")
+    Optional<ItinerarioSistema> findDetalleById(@Param("id") Long id);
 }

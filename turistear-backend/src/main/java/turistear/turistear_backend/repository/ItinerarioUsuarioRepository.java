@@ -1,5 +1,6 @@
 package turistear.turistear_backend.repository;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -19,7 +20,13 @@ public interface ItinerarioUsuarioRepository extends JpaRepository<ItinerarioUsu
      * tabla {@code favoritos}. Orden por fecha de inicio ascendente
      * para mostrar primero los próximos viajes.
      */
-    List<ItinerarioUsuario> findByUsuario_IdUsuarioOrderByFechaInicioAsc(Long idUsuario);
+    @EntityGraph(attributePaths = {"itinerarioSistema", "itinerarioSistema.etiquetas"})
+    @Query("""
+        SELECT DISTINCT iu FROM ItinerarioUsuario iu
+        WHERE iu.usuario.idUsuario = :idUsuario
+        ORDER BY iu.fechaInicio ASC
+    """)
+    List<ItinerarioUsuario> findByUsuario_IdUsuarioOrderByFechaInicioAsc(@Param("idUsuario") Long idUsuario);
 
     /**
      * Lookup con ownership check: la copia con ese id que además
