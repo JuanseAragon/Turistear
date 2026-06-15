@@ -94,6 +94,8 @@ public class ServiceItinerario {
         if (!repository.existsById(id)) {
             throw new ResourceNotFoundException("Itinerario no encontrado: " + id);
         }
-        repository.deleteById(id);
+        // Bulk DELETE sin cargar la entidad: las FK con CASCADE en Supabase
+        // limpian items, etiquetas y copias de usuario automáticamente.
+        repository.deleteDirectlyById(id);
     }
 }

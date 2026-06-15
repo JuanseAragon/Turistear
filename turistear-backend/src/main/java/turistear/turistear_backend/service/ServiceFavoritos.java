@@ -54,7 +54,9 @@ public class ServiceFavoritos {
 
         Usuario usuario = usuarioRepo.findById(idUsuario)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
-        ItinerarioSistema sistema = sistemaRepo.findById(idSistema)
+        // findDetalleById pre-carga items + actividades en 1 JOIN,
+        // evitando N+1 al iterar los items para crear la copia.
+        ItinerarioSistema sistema = sistemaRepo.findDetalleById(idSistema)
                 .orElseThrow(() -> new ResourceNotFoundException("Itinerario del sistema no encontrado: " + idSistema));
 
         ItinerarioUsuario copia = ItinerarioUsuario.builder()
@@ -151,7 +153,10 @@ public class ServiceFavoritos {
     public ItinerarioUsuarioDTO actualizarFechas(
             Long idUsuario, Long idFavorito, UpdateItinerarioUsuarioRequest request) {
 
-        ItinerarioUsuario favorito = cargarConOwnership(idUsuario, idFavorito);
+        // findByIdConItems pre-carga items + etiquetas (ownership check incluido).
+        ItinerarioUsuario favorito = favoritoRepo.findByIdConItems(idFavorito, idUsuario)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Favorito no encontrado: " + idFavorito));
         favorito.setFechaInicio(request.fechaInicio());
         favorito.setFechaFin(request.fechaFin());
         return ItinerarioUsuarioDTO.from(favoritoRepo.save(favorito));

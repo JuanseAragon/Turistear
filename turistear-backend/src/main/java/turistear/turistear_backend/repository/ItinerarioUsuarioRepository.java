@@ -49,18 +49,28 @@ public interface ItinerarioUsuarioRepository extends JpaRepository<ItinerarioUsu
      * </ul>
      * Si no hay ninguno con {@code fechaFin >= hoy}, devuelve empty.
      * Usado por {@code GET /favoritos/activo} (card "En curso" del Home).
+     * <p>
+     * {@code @EntityGraph} pre-carga items y etiquetas del sistema para que
+     * {@code ItinerarioUsuarioDTO.from()} no dispare lazy loads adicionales.
+     * Hibernate aplica el filtrado de {@code findFirst} en memoria al combinar
+     * {@code @EntityGraph} con colecciones — el conjunto por usuario es pequeño,
+     * por lo que esto es aceptable.
      */
+    @EntityGraph(attributePaths = {"itinerarioSistema", "itinerarioSistema.etiquetas", "items"})
     Optional<ItinerarioUsuario> findFirstByUsuario_IdUsuarioAndFechaFinGreaterThanEqualOrderByFechaInicioAsc(
             Long idUsuario, LocalDate hoy);
 
     /**
-     * Variante con JOIN FETCH a items para evitar el N+1 al armar el DTO
-     * completo de la copia (endpoint {@code GET /favoritos/{id}}). Incluye
-     * el ownership check en la misma query.
+     * Carga completa para endpoints que devuelven {@code ItinerarioUsuarioDTO}:
+     * trae items (colección de la copia) y las etiquetas del itinerario del
+     * sistema en 1 query con DISTINCT. Incluye el ownership check.
+     * Usado por {@code GET /favoritos/{id}} y {@code PUT /favoritos/{id}}.
      */
     @Query("""
-        SELECT iu FROM ItinerarioUsuario iu
+        SELECT DISTINCT iu FROM ItinerarioUsuario iu
         LEFT JOIN FETCH iu.items
+        LEFT JOIN FETCH iu.itinerarioSistema sis
+        LEFT JOIN FETCH sis.etiquetas
         WHERE iu.idItinerarioUsuario = :id
           AND iu.usuario.idUsuario   = :idUsuario
     """)
@@ -89,7 +99,13 @@ public interface ItinerarioUsuarioRepository extends JpaRepository<ItinerarioUsu
      * ({@code fechaFin >= hoy}). Lo usa {@code obtenerActivo}: el fijado
      * solo cuenta como activo mientras su viaje no haya terminado; si ya
      * venció se ignora y la lógica cae al fallback por fecha más próxima.
+     * <p>
+     * {@code @EntityGraph} pre-carga items y etiquetas del sistema en la
+     * misma query — el resultado es 0 o 1 entidad, por lo que el producto
+     * cartesiano de esas dos colecciones está acotado y Hibernate las
+     * deduplica correctamente.
      */
+    @EntityGraph(attributePaths = {"itinerarioSistema", "itinerarioSistema.etiquetas", "items"})
     Optional<ItinerarioUsuario> findByUsuario_IdUsuarioAndEsPinnedTrueAndFechaFinGreaterThanEqual(
             Long idUsuario, LocalDate hoy);
 

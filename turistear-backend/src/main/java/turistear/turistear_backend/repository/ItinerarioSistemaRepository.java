@@ -127,4 +127,15 @@ public interface ItinerarioSistemaRepository extends JpaRepository<ItinerarioSis
     @Modifying
     @Query("UPDATE ItinerarioSistema i SET i.likes = i.likes - 1 WHERE i.idItinerario = :id AND i.likes > 0")
     void decrementarLikes(@Param("id") Long id);
+
+    /**
+     * Elimina el itinerario del sistema directamente, sin pasar por
+     * el cascade de JPA (no carga items ni etiquetas en memoria).
+     * Las FKs con CASCADE DELETE en Supabase limpian en cascada:
+     * {@code itinerario_sistema_items}, {@code itinerario_sistema_etiquetas}
+     * e {@code itinerarios_usuario} con sus items.
+     */
+    @Modifying
+    @Query("DELETE FROM ItinerarioSistema i WHERE i.idItinerario = :id")
+    void deleteDirectlyById(@Param("id") Long id);
 }
