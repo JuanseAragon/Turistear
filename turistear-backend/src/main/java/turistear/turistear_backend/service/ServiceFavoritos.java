@@ -277,6 +277,16 @@ public class ServiceFavoritos {
     }
 
     /* ---------------------------------------------------------------- *
+     *  PATCH /favoritos/{id}/completar                                 *
+     * ---------------------------------------------------------------- */
+
+    @Transactional
+    public void completarItinerario(Long idUsuario, Long idFavorito) {
+        ItinerarioUsuario favorito = cargarConOwnership(idUsuario, idFavorito);
+        favorito.setCompletado(true);
+    }
+
+    /* ---------------------------------------------------------------- *
      *  Helper de ownership                                             *
      * ---------------------------------------------------------------- */
 

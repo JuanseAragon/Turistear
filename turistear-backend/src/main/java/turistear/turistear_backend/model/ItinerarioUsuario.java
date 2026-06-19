@@ -56,6 +56,10 @@ public class ItinerarioUsuario {
     @Builder.Default
     private boolean esPinned = false;
 
+    @Column(name = "completado", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
+    @Builder.Default
+    private boolean completado = false;
+
     @OneToMany(mappedBy = "itinerarioUsuario", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("dia ASC, hora ASC")
     @Builder.Default

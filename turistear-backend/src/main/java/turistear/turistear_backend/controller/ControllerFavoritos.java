@@ -124,6 +124,21 @@ public class ControllerFavoritos {
         return ResponseEntity.noContent().build();
     }
 
+    @PatchMapping("/{id}/completar")
+    @Operation(summary = "Marcar un itinerario como completado (viaje realizado)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Itinerario marcado como completado"),
+            @ApiResponse(responseCode = "404", description = "Favorito no encontrado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<Void> completar(
+            @PathVariable Long id,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        serviceFavoritos.completarItinerario(idUsuario, id);
+        return ResponseEntity.noContent().build();
+    }
+
     @PatchMapping("/{id}/pin")
     @Operation(summary = "Fijar/desfijar un favorito como el activo del Home (tachuela)")
     @ApiResponses({

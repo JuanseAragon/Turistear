@@ -27,7 +27,8 @@ public record ItinerarioUsuarioDTO(
         String fotoPortada,
         Integer duracionDias,
         Set<CategoriaItinerario> etiquetas,
-        List<ItemItinerarioUsuarioDTO> items
+        List<ItemItinerarioUsuarioDTO> items,
+        boolean completado
 ) {
     public static ItinerarioUsuarioDTO from(ItinerarioUsuario iu) {
         if (iu == null) return null;
@@ -47,7 +48,8 @@ public record ItinerarioUsuarioDTO(
                         .collect(Collectors.toSet()),
                 iu.getItems().stream()
                         .map(ItemItinerarioUsuarioDTO::from)
-                        .toList()
+                        .toList(),
+                iu.isCompletado()
         );
     }
 }

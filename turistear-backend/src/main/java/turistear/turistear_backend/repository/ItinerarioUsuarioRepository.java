@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import turistear.turistear_backend.enumerable.Provincia;
 import turistear.turistear_backend.model.ItinerarioUsuario;
 
 import java.time.LocalDate;
@@ -118,4 +119,40 @@ public interface ItinerarioUsuarioRepository extends JpaRepository<ItinerarioUsu
     @Modifying
     @Query("DELETE FROM ItinerarioUsuario iu WHERE iu.idItinerarioUsuario = :id")
     void deleteDirectlyById(@Param("id") Long id);
+
+    @Query("""
+        SELECT DISTINCT iu.itinerarioSistema.provincia
+        FROM ItinerarioUsuario iu
+        WHERE iu.usuario.idUsuario = :idUsuario
+          AND iu.completado = true
+    """)
+    List<Provincia> findProvinciasVisitadas(@Param("idUsuario") Long idUsuario);
+
+    @Query(value = """
+        SELECT COALESCE(SUM(CAST(fecha_fin - fecha_inicio AS INTEGER) + 1), 0)
+        FROM itinerarios_usuario
+        WHERE usuario_id = :idUsuario AND completado = TRUE
+    """, nativeQuery = true)
+    Long findDiasTotalesViajados(@Param("idUsuario") Long idUsuario);
+
+    @Query("""
+        SELECT iu.itinerarioSistema.provincia
+        FROM ItinerarioUsuario iu
+        WHERE iu.usuario.idUsuario = :idUsuario AND iu.completado = true
+        GROUP BY iu.itinerarioSistema.provincia
+        ORDER BY COUNT(iu) DESC
+    """)
+    List<Provincia> findProvinciasRanking(@Param("idUsuario") Long idUsuario);
+
+    @Query(value = """
+        SELECT e.nombre
+        FROM itinerarios_usuario iu
+        JOIN itinerario_sistema_etiquetas ise ON iu.itinerario_sistema_id = ise.itinerario_sistema_id
+        JOIN etiquetas e ON ise.etiqueta_id = e.id
+        WHERE iu.usuario_id = :idUsuario AND iu.completado = TRUE
+        GROUP BY e.nombre
+        ORDER BY COUNT(*) DESC
+        LIMIT 1
+    """, nativeQuery = true)
+    Optional<String> findEtiquetaPredominante(@Param("idUsuario") Long idUsuario);
 }
