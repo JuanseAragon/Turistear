@@ -30,10 +30,12 @@ import java.util.List;
  * param ni query param.
  */
 @RestController
-@RequestMapping("/favoritos")
+@RequestMapping("/itinerarios")
 @RequiredArgsConstructor
-@Tag(name = "Favoritos",
-        description = "Copias personales de itinerarios del sistema con CRUD sobre sus actividades")
+@Tag(name = "Itinerarios de usuario",
+        description = "Copias personales de itinerarios con CRUD sobre sus actividades")
+// NOTA (refactor en curso): los bookmarks pasaron a /favoritos (ver FavoritoController).
+// Este controller maneja las copias del usuario y se reescribe/renombra en el Módulo 3.
 public class ControllerFavoritos {
 
     private final ServiceFavoritos serviceFavoritos;

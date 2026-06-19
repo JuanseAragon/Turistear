@@ -129,6 +129,15 @@ public interface ItinerarioSistemaRepository extends JpaRepository<ItinerarioSis
     void decrementarLikes(@Param("id") Long id);
 
     /**
+     * Incrementa el contador de likes en una sola query de escritura, sin
+     * cargar la entidad. Usado por {@code FavoritoService} al guardar un
+     * itinerario del sistema como favorito (bookmark).
+     */
+    @Modifying
+    @Query("UPDATE ItinerarioSistema i SET i.likes = i.likes + 1 WHERE i.idItinerario = :id")
+    void incrementarLikes(@Param("id") Long id);
+
+    /**
      * Elimina el itinerario del sistema directamente, sin pasar por
      * el cascade de JPA (no carga items ni etiquetas en memoria).
      * Las FKs con CASCADE DELETE en Supabase limpian en cascada:
