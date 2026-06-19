@@ -9,11 +9,14 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import turistear.turistear_backend.dto.auth.ChangePasswordRequest;
 import turistear.turistear_backend.dto.common.ErrorResponse;
+import turistear.turistear_backend.dto.usuario.EstadisticasUsuarioResponse;
 import turistear.turistear_backend.dto.usuario.UpdatePerfilRequest;
 import turistear.turistear_backend.dto.usuario.UsuarioResponse;
+import turistear.turistear_backend.security.AuthUtils;
 import turistear.turistear_backend.service.UsuarioService;
 
 @RestController
@@ -23,6 +26,19 @@ import turistear.turistear_backend.service.UsuarioService;
 public class ControllerPerfil {
 
     private final UsuarioService usuarioService;
+    private final AuthUtils authUtils;
+
+    @GetMapping("/me/estadisticas")
+    @Operation(summary = "Estadísticas de viajes del usuario autenticado")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Estadísticas obtenidas"),
+            @ApiResponse(responseCode = "401", description = "No autenticado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<EstadisticasUsuarioResponse> getEstadisticas(Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return ResponseEntity.ok(usuarioService.getEstadisticas(idUsuario));
+    }
 
     @GetMapping("/{id}")
     @Operation(summary = "Obtener el perfil de un usuario")
