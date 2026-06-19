@@ -25,7 +25,7 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(of = "idItinerarioUsuario")
-@ToString(exclude = {"usuario", "items", "etiquetas"})
+@ToString(exclude = {"usuario", "items", "etiquetas", "fotos"})
 public class ItinerarioUsuario {
 
     @Id
@@ -80,6 +80,11 @@ public class ItinerarioUsuario {
     @OrderBy("dia ASC, hora ASC")
     @Builder.Default
     private List<ItemItinerarioUsuario> items = new ArrayList<>();
+
+    @OneToMany(mappedBy = "itinerarioUsuario", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("orden ASC, id ASC")
+    @Builder.Default
+    private List<FotoItinerarioUsuario> fotos = new ArrayList<>();
 
     @ManyToMany
     @JoinTable(

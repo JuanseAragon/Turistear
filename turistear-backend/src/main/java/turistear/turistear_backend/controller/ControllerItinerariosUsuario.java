@@ -13,7 +13,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import turistear.turistear_backend.dto.common.ErrorResponse;
+import turistear.turistear_backend.dto.favoritos.AgregarFotoItinerarioRequest;
 import turistear.turistear_backend.dto.favoritos.CrearItinerarioRequest;
+import turistear.turistear_backend.dto.favoritos.FotoItinerarioUsuarioDTO;
 import turistear.turistear_backend.dto.favoritos.ItemFavoritoRequest;
 import turistear.turistear_backend.dto.favoritos.ItemItinerarioUsuarioDTO;
 import turistear.turistear_backend.dto.favoritos.ItinerarioUsuarioDTO;
@@ -223,6 +225,43 @@ public class ControllerItinerariosUsuario {
             Authentication authentication) {
         Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
         serviceItinerarios.eliminarItem(idUsuario, id, itemId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /* ---------------- fotos ---------------- */
+
+    @PostMapping("/{id}/fotos")
+    @Operation(summary = "Agregar una foto al itinerario")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Foto agregada"),
+            @ApiResponse(responseCode = "400", description = "URL invalida",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Itinerario no encontrado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<FotoItinerarioUsuarioDTO> agregarFoto(
+            @PathVariable Long id,
+            @Valid @RequestBody AgregarFotoItinerarioRequest request,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(serviceItinerarios.agregarFoto(idUsuario, id, request));
+    }
+
+    @DeleteMapping("/{id}/fotos/{fotoId}")
+    @Operation(summary = "Eliminar una foto del itinerario")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Foto eliminada"),
+            @ApiResponse(responseCode = "404", description = "Itinerario o foto no encontrados",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<Void> eliminarFoto(
+            @PathVariable Long id,
+            @PathVariable Long fotoId,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        serviceItinerarios.eliminarFoto(idUsuario, id, fotoId);
         return ResponseEntity.noContent().build();
     }
 }

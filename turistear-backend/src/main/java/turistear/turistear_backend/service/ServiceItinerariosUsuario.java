@@ -3,7 +3,9 @@ package turistear.turistear_backend.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import turistear.turistear_backend.dto.favoritos.AgregarFotoItinerarioRequest;
 import turistear.turistear_backend.dto.favoritos.CrearItinerarioRequest;
+import turistear.turistear_backend.dto.favoritos.FotoItinerarioUsuarioDTO;
 import turistear.turistear_backend.dto.favoritos.ItemFavoritoRequest;
 import turistear.turistear_backend.dto.favoritos.ItemItinerarioUsuarioDTO;
 import turistear.turistear_backend.dto.favoritos.ItinerarioUsuarioDTO;
@@ -38,6 +40,7 @@ public class ServiceItinerariosUsuario {
     private final UsuarioRepository usuarioRepo;
     private final FavoritoRepository favoritoRepo;
     private final EtiquetaRepository etiquetaRepo;
+    private final FotoItinerarioUsuarioRepository fotoRepo;
 
     /* ---------------------------------------------------------------- *
      *  POST /itinerarios  — crear desde cero                           *
@@ -63,6 +66,20 @@ public class ServiceItinerariosUsuario {
 
         if (request.etiquetas() != null && !request.etiquetas().isEmpty()) {
             nuevo.getEtiquetas().addAll(etiquetaRepo.findByNombreIn(request.etiquetas()));
+        }
+
+        if (request.fotos() != null) {
+            for (int orden = 0; orden < request.fotos().size(); orden++) {
+                String url = request.fotos().get(orden);
+                if (url == null || url.isBlank()) {
+                    throw new BadRequestException("Las URLs de las fotos no pueden estar vacías");
+                }
+                nuevo.getFotos().add(FotoItinerarioUsuario.builder()
+                        .itinerarioUsuario(nuevo)
+                        .url(url)
+                        .orden(orden)
+                        .build());
+            }
         }
 
         return ItinerarioUsuarioDTO.from(itinerarioRepo.save(nuevo));
@@ -279,6 +296,42 @@ public class ServiceItinerariosUsuario {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Item no encontrado en este itinerario: " + idItem));
         itemRepo.delete(item);
+    }
+
+    /* ---------------------------------------------------------------- *
+     *  POST /itinerarios/{id}/fotos                                    *
+     * ---------------------------------------------------------------- */
+
+    @Transactional
+    public FotoItinerarioUsuarioDTO agregarFoto(
+            Long idUsuario, Long id, AgregarFotoItinerarioRequest request) {
+        ItinerarioUsuario itinerario = cargarConOwnership(idUsuario, id);
+        int siguienteOrden = itinerario.getFotos().stream()
+                .mapToInt(FotoItinerarioUsuario::getOrden)
+                .max()
+                .orElse(-1) + 1;
+
+        FotoItinerarioUsuario foto = FotoItinerarioUsuario.builder()
+                .itinerarioUsuario(itinerario)
+                .url(request.url())
+                .orden(siguienteOrden)
+                .build();
+        itinerario.getFotos().add(foto);
+        return FotoItinerarioUsuarioDTO.from(fotoRepo.save(foto));
+    }
+
+    /* ---------------------------------------------------------------- *
+     *  DELETE /itinerarios/{id}/fotos/{fotoId}                         *
+     * ---------------------------------------------------------------- */
+
+    @Transactional
+    public void eliminarFoto(Long idUsuario, Long id, Long fotoId) {
+        cargarConOwnership(idUsuario, id);
+        FotoItinerarioUsuario foto = fotoRepo
+                .findByIdAndItinerarioUsuario_IdItinerarioUsuario(fotoId, id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Foto no encontrada en este itinerario: " + fotoId));
+        fotoRepo.delete(foto);
     }
 
     /* ---------------------------------------------------------------- *

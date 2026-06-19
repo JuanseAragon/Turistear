@@ -28,7 +28,8 @@ public record ItinerarioUsuarioDTO(
         Set<CategoriaItinerario> etiquetas,
         List<ItemItinerarioUsuarioDTO> items,
         boolean esPinned,
-        boolean completado
+        boolean completado,
+        List<FotoItinerarioUsuarioDTO> fotos
 ) {
     public static ItinerarioUsuarioDTO from(ItinerarioUsuario iu) {
         if (iu == null) return null;
@@ -48,7 +49,10 @@ public record ItinerarioUsuarioDTO(
                         .map(ItemItinerarioUsuarioDTO::from)
                         .toList(),
                 iu.isEsPinned(),
-                iu.isCompletado()
+                iu.isCompletado(),
+                iu.getFotos().stream()
+                        .map(FotoItinerarioUsuarioDTO::from)
+                        .toList()
         );
     }
 }

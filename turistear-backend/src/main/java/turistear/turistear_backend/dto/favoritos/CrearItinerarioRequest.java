@@ -9,6 +9,7 @@ import turistear.turistear_backend.enumerable.CategoriaItinerario;
 import turistear.turistear_backend.enumerable.Provincia;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -42,7 +43,10 @@ public record CrearItinerarioRequest(
         String fotoPortada,
 
         @Schema(example = "[\"NATURALEZA\", \"AVENTURA\"]")
-        Set<CategoriaItinerario> etiquetas
+        Set<CategoriaItinerario> etiquetas,
+
+        @Schema(example = "[\"https://example.com/foto-1.jpg\", \"https://example.com/foto-2.jpg\"]")
+        List<String> fotos
 ) {
     @AssertTrue(message = "La fecha de fin no puede ser anterior a la fecha de inicio")
     public boolean isRangoFechasValido() {
