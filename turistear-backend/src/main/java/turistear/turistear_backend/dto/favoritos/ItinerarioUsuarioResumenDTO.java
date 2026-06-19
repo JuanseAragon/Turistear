@@ -30,13 +30,18 @@ public record ItinerarioUsuarioResumenDTO(
 ) {
     public static ItinerarioUsuarioResumenDTO from(ItinerarioUsuario iu) {
         if (iu == null) return null;
+        String fotoPortada = iu.getFotoPortada();
+        if ((fotoPortada == null || fotoPortada.isBlank()) && !iu.getFotos().isEmpty()) {
+            fotoPortada = iu.getFotos().getFirst().getUrl();
+        }
+
         return new ItinerarioUsuarioResumenDTO(
                 iu.getIdItinerarioUsuario(),
                 iu.getTitulo(),
                 iu.getProvincia(),
                 iu.getFechaInicio(),
                 iu.getFechaFin(),
-                iu.getFotoPortada(),
+                fotoPortada,
                 iu.getDuracionDias(),
                 iu.getEtiquetas().stream()
                         .map(Etiqueta::getNombre)

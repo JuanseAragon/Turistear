@@ -19,10 +19,10 @@ public interface ItinerarioUsuarioRepository extends JpaRepository<ItinerarioUsu
     /**
      * Lista todos los itinerarios del usuario, ordenados por fecha de
      * inicio ascendente (primero los próximos). {@code @EntityGraph} trae
-     * las etiquetas propias en la misma query para evitar N+1 al armar el
-     * ResumenDTO.
+     * las etiquetas y fotos propias en la misma query para evitar N+1 y
+     * permitir que el resumen use la primera foto si la portada es nula.
      */
-    @EntityGraph(attributePaths = {"etiquetas"})
+    @EntityGraph(attributePaths = {"etiquetas", "fotos"})
     @Query("""
         SELECT DISTINCT iu FROM ItinerarioUsuario iu
         WHERE iu.usuario.idUsuario = :idUsuario

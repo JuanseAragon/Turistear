@@ -89,6 +89,11 @@ public class ServiceItinerariosUsuario {
             }
         }
 
+        if ((nuevo.getFotoPortada() == null || nuevo.getFotoPortada().isBlank())
+                && !nuevo.getFotos().isEmpty()) {
+            nuevo.setFotoPortada(nuevo.getFotos().getFirst().getUrl());
+        }
+
         return ItinerarioUsuarioDTO.from(itinerarioRepo.save(nuevo));
     }
 
@@ -328,7 +333,14 @@ public class ServiceItinerariosUsuario {
                 .orden(siguienteOrden)
                 .build();
         itinerario.getFotos().add(foto);
-        return FotoItinerarioUsuarioDTO.from(fotoRepo.save(foto));
+        FotoItinerarioUsuario fotoGuardada = fotoRepo.save(foto);
+
+        if (itinerario.getFotoPortada() == null || itinerario.getFotoPortada().isBlank()) {
+            itinerario.setFotoPortada(request.url());
+            itinerarioRepo.saveAndFlush(itinerario);
+        }
+
+        return FotoItinerarioUsuarioDTO.from(fotoGuardada);
     }
 
     /* ---------------------------------------------------------------- *
@@ -343,16 +355,21 @@ public class ServiceItinerariosUsuario {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Foto no encontrada en este itinerario: " + fotoId));
 
-        if (foto.getUrl().equals(itinerario.getFotoPortada())) {
+        boolean eraPortada = foto.getUrl().equals(itinerario.getFotoPortada());
+        itinerario.getFotos().removeIf(candidata -> fotoId.equals(candidata.getId()));
+
+        if (eraPortada || itinerario.getFotoPortada() == null || itinerario.getFotoPortada().isBlank()) {
             String nuevaPortada = itinerario.getFotos().stream()
-                    .filter(candidata -> !fotoId.equals(candidata.getId()))
                     .map(FotoItinerarioUsuario::getUrl)
                     .findFirst()
                     .orElse(null);
             itinerario.setFotoPortada(nuevaPortada);
         }
 
-        fotoRepo.delete(foto);
+        // La relación tiene orphanRemoval=true: quitar la entidad de la
+        // colección administrada y forzar el flush garantiza que el DELETE
+        // se ejecute antes de responder 204 al frontend.
+        itinerarioRepo.saveAndFlush(itinerario);
     }
 
     /* ---------------------------------------------------------------- *
