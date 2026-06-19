@@ -3,7 +3,6 @@ package turistear.turistear_backend.dto.favoritos;
 import turistear.turistear_backend.enumerable.CategoriaItinerario;
 import turistear.turistear_backend.enumerable.Provincia;
 import turistear.turistear_backend.model.Etiqueta;
-import turistear.turistear_backend.model.ItinerarioSistema;
 import turistear.turistear_backend.model.ItinerarioUsuario;
 
 import java.time.LocalDate;
@@ -12,13 +11,13 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Vista completa de una copia personal del usuario, incluyendo todos
- * sus items. Usada en {@code GET /favoritos/\{id\}} y
- * {@code GET /favoritos/activo}.
+ * Vista completa (con items) de un itinerario propio del usuario.
+ * Usada en {@code GET /itinerarios/\{id\}} y {@code GET /itinerarios/activo}.
+ *
+ * Todos los datos son propios de la copia — ya no se leen del sistema.
  */
 public record ItinerarioUsuarioDTO(
         Long idItinerarioUsuario,
-        Long idItinerarioSistema,
         String titulo,
         String descripcion,
         Provincia provincia,
@@ -28,27 +27,27 @@ public record ItinerarioUsuarioDTO(
         Integer duracionDias,
         Set<CategoriaItinerario> etiquetas,
         List<ItemItinerarioUsuarioDTO> items,
+        boolean esPinned,
         boolean completado
 ) {
     public static ItinerarioUsuarioDTO from(ItinerarioUsuario iu) {
         if (iu == null) return null;
-        ItinerarioSistema sis = iu.getItinerarioSistema();
         return new ItinerarioUsuarioDTO(
                 iu.getIdItinerarioUsuario(),
-                sis.getIdItinerario(),
-                sis.getTitulo(),
-                sis.getDescripcion(),
-                sis.getProvincia(),
+                iu.getTitulo(),
+                iu.getDescripcion(),
+                iu.getProvincia(),
                 iu.getFechaInicio(),
                 iu.getFechaFin(),
-                sis.getFotoPortada(),
-                sis.getDuracionDias(),
-                sis.getEtiquetas().stream()
+                iu.getFotoPortada(),
+                iu.getDuracionDias(),
+                iu.getEtiquetas().stream()
                         .map(Etiqueta::getNombre)
                         .collect(Collectors.toSet()),
                 iu.getItems().stream()
                         .map(ItemItinerarioUsuarioDTO::from)
                         .toList(),
+                iu.isEsPinned(),
                 iu.isCompletado()
         );
     }

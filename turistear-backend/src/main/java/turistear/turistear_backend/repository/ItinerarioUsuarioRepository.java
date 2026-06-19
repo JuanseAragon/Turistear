@@ -17,12 +17,12 @@ import java.util.Optional;
 public interface ItinerarioUsuarioRepository extends JpaRepository<ItinerarioUsuario, Long> {
 
     /**
-     * Lista todos los favoritos del usuario (sus copias personales).
-     * Cada {@code itinerarios_usuario} es un favorito tras dropear la
-     * tabla {@code favoritos}. Orden por fecha de inicio ascendente
-     * para mostrar primero los próximos viajes.
+     * Lista todos los itinerarios del usuario, ordenados por fecha de
+     * inicio ascendente (primero los próximos). {@code @EntityGraph} trae
+     * las etiquetas propias en la misma query para evitar N+1 al armar el
+     * ResumenDTO.
      */
-    @EntityGraph(attributePaths = {"itinerarioSistema", "itinerarioSistema.etiquetas"})
+    @EntityGraph(attributePaths = {"etiquetas"})
     @Query("""
         SELECT DISTINCT iu FROM ItinerarioUsuario iu
         WHERE iu.usuario.idUsuario = :idUsuario
@@ -31,47 +31,31 @@ public interface ItinerarioUsuarioRepository extends JpaRepository<ItinerarioUsu
     List<ItinerarioUsuario> findByUsuario_IdUsuarioOrderByFechaInicioAsc(@Param("idUsuario") Long idUsuario);
 
     /**
-     * Lookup con ownership check: la copia con ese id que además
-     * pertenezca al usuario indicado. Es el chequeo obligatorio antes de
-     * leer o editar una copia — "solo aplica sobre copias propias del
-     * usuario autenticado, nunca sobre itinerarios originales del sistema".
+     * Lookup con ownership check: el itinerario con ese id que además
+     * pertenezca al usuario indicado. Chequeo obligatorio antes de leer
+     * o editar — nunca opera sobre itinerarios de otro usuario.
      */
     Optional<ItinerarioUsuario> findByIdItinerarioUsuarioAndUsuario_IdUsuario(
             Long idItinerarioUsuario, Long idUsuario);
 
     /**
-     * Favorito "activo": el que está en curso hoy o el próximo a empezar.
-     * <p>
-     * Estrategia: descarta los que ya terminaron ({@code fechaFin < hoy})
-     * y ordena por fechaInicio ascendente. El primero es:
-     * <ul>
-     *   <li>el que está en curso ({@code fechaInicio <= hoy <= fechaFin}), o</li>
-     *   <li>el próximo viaje ({@code fechaInicio > hoy}).</li>
-     * </ul>
-     * Si no hay ninguno con {@code fechaFin >= hoy}, devuelve empty.
-     * Usado por {@code GET /favoritos/activo} (card "En curso" del Home).
-     * <p>
-     * {@code @EntityGraph} pre-carga items y etiquetas del sistema para que
-     * {@code ItinerarioUsuarioDTO.from()} no dispare lazy loads adicionales.
-     * Hibernate aplica el filtrado de {@code findFirst} en memoria al combinar
-     * {@code @EntityGraph} con colecciones — el conjunto por usuario es pequeño,
-     * por lo que esto es aceptable.
+     * Itinerario "activo" por fecha: el de fecha más próxima cuya
+     * {@code fechaFin} todavía no pasó. {@code @EntityGraph} pre-carga
+     * items y etiquetas propias. Usado por {@code GET /itinerarios/activo}.
      */
-    @EntityGraph(attributePaths = {"itinerarioSistema", "itinerarioSistema.etiquetas", "items"})
+    @EntityGraph(attributePaths = {"etiquetas", "items"})
     Optional<ItinerarioUsuario> findFirstByUsuario_IdUsuarioAndFechaFinGreaterThanEqualOrderByFechaInicioAsc(
             Long idUsuario, LocalDate hoy);
 
     /**
      * Carga completa para endpoints que devuelven {@code ItinerarioUsuarioDTO}:
-     * trae items (colección de la copia) y las etiquetas del itinerario del
-     * sistema en 1 query con DISTINCT. Incluye el ownership check.
-     * Usado por {@code GET /favoritos/{id}} y {@code PUT /favoritos/{id}}.
+     * trae items y etiquetas propias en una query con DISTINCT. Incluye el
+     * ownership check. Usado por {@code GET /itinerarios/\{id\}} y {@code PUT}.
      */
     @Query("""
         SELECT DISTINCT iu FROM ItinerarioUsuario iu
         LEFT JOIN FETCH iu.items
-        LEFT JOIN FETCH iu.itinerarioSistema sis
-        LEFT JOIN FETCH sis.etiquetas
+        LEFT JOIN FETCH iu.etiquetas
         WHERE iu.idItinerarioUsuario = :id
           AND iu.usuario.idUsuario   = :idUsuario
     """)
@@ -80,48 +64,38 @@ public interface ItinerarioUsuarioRepository extends JpaRepository<ItinerarioUsu
             @Param("idUsuario") Long idUsuario);
 
     /**
-     * Verifica si el usuario ya guardó como favorito un determinado
-     * itinerario del sistema. Sirve para evitar copias duplicadas al
-     * {@code POST /favoritos/{idSistema}}.
-     */
-    boolean existsByUsuario_IdUsuarioAndItinerarioSistema_IdItinerario(
-            Long idUsuario, Long idItinerarioSistema);
-
-    /**
-     * Favorito marcado con la "tachuela", sin filtrar por fecha. Lo usa
-     * {@code togglePin} para encontrar el fijado actual y desfijarlo —
-     * tiene que hallarlo aunque su viaje ya haya vencido, para no dejar
-     * dos fijados al pinear otro. Solo puede haber uno a la vez.
+     * Itinerario marcado con la "tachuela", sin filtrar por fecha. Lo usa
+     * {@code togglePin} para hallar el fijado actual y desfijarlo. Solo
+     * puede haber uno a la vez.
      */
     Optional<ItinerarioUsuario> findByUsuario_IdUsuarioAndEsPinnedTrue(Long idUsuario);
 
     /**
-     * Favorito fijado con la "tachuela" y todavía vigente
+     * Itinerario fijado con la "tachuela" y todavía vigente
      * ({@code fechaFin >= hoy}). Lo usa {@code obtenerActivo}: el fijado
-     * solo cuenta como activo mientras su viaje no haya terminado; si ya
-     * venció se ignora y la lógica cae al fallback por fecha más próxima.
-     * <p>
-     * {@code @EntityGraph} pre-carga items y etiquetas del sistema en la
-     * misma query — el resultado es 0 o 1 entidad, por lo que el producto
-     * cartesiano de esas dos colecciones está acotado y Hibernate las
-     * deduplica correctamente.
+     * solo cuenta como activo mientras su viaje no haya terminado.
      */
-    @EntityGraph(attributePaths = {"itinerarioSistema", "itinerarioSistema.etiquetas", "items"})
+    @EntityGraph(attributePaths = {"etiquetas", "items"})
     Optional<ItinerarioUsuario> findByUsuario_IdUsuarioAndEsPinnedTrueAndFechaFinGreaterThanEqual(
             Long idUsuario, LocalDate hoy);
 
     /**
-     * Elimina el favorito directamente por id, sin pasar por el ciclo de
-     * vida de la entidad (no dispara {@code orphanRemoval} ni cascade de JPA).
-     * Llamar DESPUÉS de {@code itemRepo.deleteByItinerarioUsuarioId}, que ya
-     * limpió los items en bulk — así el delete del padre no necesita cargarlos.
+     * Elimina el itinerario directamente por id, sin pasar por el ciclo
+     * de vida de la entidad. Llamar DESPUÉS de
+     * {@code itemRepo.deleteByItinerarioUsuarioId}.
      */
     @Modifying
     @Query("DELETE FROM ItinerarioUsuario iu WHERE iu.idItinerarioUsuario = :id")
     void deleteDirectlyById(@Param("id") Long id);
 
+    /* ---------------------------------------------------------------- *
+     *  Estadísticas del mapa de provincias.                            *
+     *  Leen de itinerarios_usuario con completado = true; ya NO hacen  *
+     *  JOIN al sistema — provincia y etiquetas son propias de la copia.*
+     * ---------------------------------------------------------------- */
+
     @Query("""
-        SELECT DISTINCT iu.itinerarioSistema.provincia
+        SELECT DISTINCT iu.provincia
         FROM ItinerarioUsuario iu
         WHERE iu.usuario.idUsuario = :idUsuario
           AND iu.completado = true
@@ -136,10 +110,10 @@ public interface ItinerarioUsuarioRepository extends JpaRepository<ItinerarioUsu
     Long findDiasTotalesViajados(@Param("idUsuario") Long idUsuario);
 
     @Query("""
-        SELECT iu.itinerarioSistema.provincia
+        SELECT iu.provincia
         FROM ItinerarioUsuario iu
         WHERE iu.usuario.idUsuario = :idUsuario AND iu.completado = true
-        GROUP BY iu.itinerarioSistema.provincia
+        GROUP BY iu.provincia
         ORDER BY COUNT(iu) DESC
     """)
     List<Provincia> findProvinciasRanking(@Param("idUsuario") Long idUsuario);
@@ -147,8 +121,8 @@ public interface ItinerarioUsuarioRepository extends JpaRepository<ItinerarioUsu
     @Query(value = """
         SELECT e.nombre
         FROM itinerarios_usuario iu
-        JOIN itinerario_sistema_etiquetas ise ON iu.itinerario_sistema_id = ise.itinerario_sistema_id
-        JOIN etiquetas e ON ise.etiqueta_id = e.id
+        JOIN itinerario_usuario_etiquetas iue ON iu.id_itinerario_usuario = iue.itinerario_usuario_id
+        JOIN etiquetas e ON iue.etiqueta_id = e.id
         WHERE iu.usuario_id = :idUsuario AND iu.completado = TRUE
         GROUP BY e.nombre
         ORDER BY COUNT(*) DESC
