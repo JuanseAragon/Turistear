@@ -34,6 +34,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ServiceItinerariosUsuario {
 
+    private static final int MAX_FOTOS_POR_ITINERARIO = 10;
+
     private final ItinerarioUsuarioRepository itinerarioRepo;
     private final ItemItinerarioUsuarioRepository itemRepo;
     private final ItinerarioSistemaRepository sistemaRepo;
@@ -66,6 +68,11 @@ public class ServiceItinerariosUsuario {
 
         if (request.etiquetas() != null && !request.etiquetas().isEmpty()) {
             nuevo.getEtiquetas().addAll(etiquetaRepo.findByNombreIn(request.etiquetas()));
+        }
+
+        if (request.fotos() != null && request.fotos().size() > MAX_FOTOS_POR_ITINERARIO) {
+            throw new BadRequestException(
+                    "Un itinerario puede tener como máximo " + MAX_FOTOS_POR_ITINERARIO + " fotos");
         }
 
         if (request.fotos() != null) {
@@ -306,6 +313,10 @@ public class ServiceItinerariosUsuario {
     public FotoItinerarioUsuarioDTO agregarFoto(
             Long idUsuario, Long id, AgregarFotoItinerarioRequest request) {
         ItinerarioUsuario itinerario = cargarConOwnership(idUsuario, id);
+        if (itinerario.getFotos().size() >= MAX_FOTOS_POR_ITINERARIO) {
+            throw new BadRequestException(
+                    "El itinerario ya alcanzó el máximo de " + MAX_FOTOS_POR_ITINERARIO + " fotos");
+        }
         int siguienteOrden = itinerario.getFotos().stream()
                 .mapToInt(FotoItinerarioUsuario::getOrden)
                 .max()
@@ -326,11 +337,21 @@ public class ServiceItinerariosUsuario {
 
     @Transactional
     public void eliminarFoto(Long idUsuario, Long id, Long fotoId) {
-        cargarConOwnership(idUsuario, id);
+        ItinerarioUsuario itinerario = cargarConOwnership(idUsuario, id);
         FotoItinerarioUsuario foto = fotoRepo
                 .findByIdAndItinerarioUsuario_IdItinerarioUsuario(fotoId, id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Foto no encontrada en este itinerario: " + fotoId));
+
+        if (foto.getUrl().equals(itinerario.getFotoPortada())) {
+            String nuevaPortada = itinerario.getFotos().stream()
+                    .filter(candidata -> !fotoId.equals(candidata.getId()))
+                    .map(FotoItinerarioUsuario::getUrl)
+                    .findFirst()
+                    .orElse(null);
+            itinerario.setFotoPortada(nuevaPortada);
+        }
+
         fotoRepo.delete(foto);
     }
 
