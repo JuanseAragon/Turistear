@@ -3,7 +3,6 @@ package turistear.turistear_backend.dto.favoritos;
 import turistear.turistear_backend.enumerable.CategoriaItinerario;
 import turistear.turistear_backend.enumerable.Provincia;
 import turistear.turistear_backend.model.Etiqueta;
-import turistear.turistear_backend.model.ItinerarioSistema;
 import turistear.turistear_backend.model.ItinerarioUsuario;
 
 import java.time.LocalDate;
@@ -11,17 +10,14 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Vista resumida (sin items) de una copia personal del usuario.
- * Usada en {@code GET /favoritos} para listar todos los favoritos
- * sin inflar el payload.
+ * Vista resumida (sin items) de un itinerario propio del usuario.
+ * Usada en {@code GET /itinerarios} para listar sin inflar el payload.
  *
- * Incluye los metadatos que vienen del itinerario del sistema
- * referenciado (titulo, provincia, fotoPortada, etiquetas) más las
- * fechas <em>propias</em> de la copia del usuario.
+ * Todos los datos son propios de la copia (titulo, provincia, foto,
+ * etiquetas) — ya no se leen del itinerario del sistema.
  */
 public record ItinerarioUsuarioResumenDTO(
         Long idItinerarioUsuario,
-        Long idItinerarioSistema,
         String titulo,
         Provincia provincia,
         LocalDate fechaInicio,
@@ -29,24 +25,29 @@ public record ItinerarioUsuarioResumenDTO(
         String fotoPortada,
         Integer duracionDias,
         Set<CategoriaItinerario> etiquetas,
-        boolean esPinned
+        boolean esPinned,
+        boolean completado
 ) {
     public static ItinerarioUsuarioResumenDTO from(ItinerarioUsuario iu) {
         if (iu == null) return null;
-        ItinerarioSistema sis = iu.getItinerarioSistema();
+        String fotoPortada = iu.getFotoPortada();
+        if ((fotoPortada == null || fotoPortada.isBlank()) && !iu.getFotos().isEmpty()) {
+            fotoPortada = iu.getFotos().getFirst().getUrl();
+        }
+
         return new ItinerarioUsuarioResumenDTO(
                 iu.getIdItinerarioUsuario(),
-                sis.getIdItinerario(),
-                sis.getTitulo(),
-                sis.getProvincia(),
+                iu.getTitulo(),
+                iu.getProvincia(),
                 iu.getFechaInicio(),
                 iu.getFechaFin(),
-                sis.getFotoPortada(),
-                sis.getDuracionDias(),
-                sis.getEtiquetas().stream()
+                fotoPortada,
+                iu.getDuracionDias(),
+                iu.getEtiquetas().stream()
                         .map(Etiqueta::getNombre)
                         .collect(Collectors.toSet()),
-                iu.isEsPinned()
+                iu.isEsPinned(),
+                iu.isCompletado()
         );
     }
 }
