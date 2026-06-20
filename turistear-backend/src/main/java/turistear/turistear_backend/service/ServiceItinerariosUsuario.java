@@ -3,6 +3,8 @@ package turistear.turistear_backend.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import turistear.turistear_backend.dto.favoritos.ActualizarFechaInicioRequest;
+import turistear.turistear_backend.dto.favoritos.ActualizarTituloRequest;
 import turistear.turistear_backend.dto.favoritos.AgregarFotoItinerarioRequest;
 import turistear.turistear_backend.dto.favoritos.CrearItinerarioRequest;
 import turistear.turistear_backend.dto.favoritos.FotoItinerarioUsuarioDTO;
@@ -10,7 +12,6 @@ import turistear.turistear_backend.dto.favoritos.ItemFavoritoRequest;
 import turistear.turistear_backend.dto.favoritos.ItemItinerarioUsuarioDTO;
 import turistear.turistear_backend.dto.favoritos.ItinerarioUsuarioDTO;
 import turistear.turistear_backend.dto.favoritos.ItinerarioUsuarioResumenDTO;
-import turistear.turistear_backend.dto.favoritos.UpdateItinerarioUsuarioRequest;
 import turistear.turistear_backend.exception.BadRequestException;
 import turistear.turistear_backend.exception.ResourceNotFoundException;
 import turistear.turistear_backend.model.*;
@@ -196,17 +197,61 @@ public class ServiceItinerariosUsuario {
     }
 
     /* ---------------------------------------------------------------- *
-     *  PUT /itinerarios/{id}  — actualizar fechas                      *
+     *  PATCH /itinerarios/{id}/titulo  — renombrar                     *
      * ---------------------------------------------------------------- */
 
     @Transactional
-    public ItinerarioUsuarioDTO actualizarFechas(
-            Long idUsuario, Long id, UpdateItinerarioUsuarioRequest request) {
+    public ItinerarioUsuarioDTO actualizarTitulo(
+            Long idUsuario, Long id, ActualizarTituloRequest request) {
+        ItinerarioUsuario itinerario = itinerarioRepo.findByIdConItems(id, idUsuario)
+                .orElseThrow(() -> new ResourceNotFoundException("Itinerario no encontrado: " + id));
+        itinerario.setTitulo(request.titulo());
+        return ItinerarioUsuarioDTO.from(itinerarioRepo.save(itinerario));
+    }
+
+    /* ---------------------------------------------------------------- *
+     *  PATCH /itinerarios/{id}/fecha-inicio                            *
+     * ---------------------------------------------------------------- */
+
+    /**
+     * El usuario reprograma cuándo arranca el viaje. La fecha de fin no se
+     * recibe: se deriva de la duración en días ({@code fechaFin =
+     * fechaInicio + duracionDias - 1}), de modo que la cantidad de días y
+     * las fechas nunca quedan inconsistentes.
+     */
+    @Transactional
+    public ItinerarioUsuarioDTO actualizarFechaInicio(
+            Long idUsuario, Long id, ActualizarFechaInicioRequest request) {
         ItinerarioUsuario itinerario = itinerarioRepo.findByIdConItems(id, idUsuario)
                 .orElseThrow(() -> new ResourceNotFoundException("Itinerario no encontrado: " + id));
         itinerario.setFechaInicio(request.fechaInicio());
-        itinerario.setFechaFin(request.fechaFin());
+        sincronizarFechaFin(itinerario);
         return ItinerarioUsuarioDTO.from(itinerarioRepo.save(itinerario));
+    }
+
+    /**
+     * Mantiene la invariante {@code fechaFin = fechaInicio + duracionDias - 1}.
+     * Es la única forma de tocar la fecha de fin: nunca se edita a mano.
+     */
+    private void sincronizarFechaFin(ItinerarioUsuario itinerario) {
+        int dias = Math.max(itinerario.getDuracionDias() == null ? 1 : itinerario.getDuracionDias(), 1);
+        itinerario.setDuracionDias(dias);
+        itinerario.setFechaFin(itinerario.getFechaInicio().plusDays(dias - 1L));
+    }
+
+    /**
+     * Si una actividad cae en un día más allá de la duración actual, el
+     * itinerario "crece": la duración se estira hasta ese día y la fecha de
+     * fin se recalcula. Es lo que permite "crear un día nuevo" agregando una
+     * actividad, manteniendo días y fechas siempre consistentes.
+     */
+    private void expandirDuracionSiHaceFalta(ItinerarioUsuario itinerario, Integer dia) {
+        if (dia == null) return;
+        int duracionActual = itinerario.getDuracionDias() == null ? 1 : itinerario.getDuracionDias();
+        if (dia > duracionActual) {
+            itinerario.setDuracionDias(dia);
+            sincronizarFechaFin(itinerario);
+        }
     }
 
     /* ---------------------------------------------------------------- *
@@ -270,6 +315,7 @@ public class ServiceItinerariosUsuario {
                 .hora(request.hora())
                 .build();
         itinerario.getItems().add(item);
+        expandirDuracionSiHaceFalta(itinerario, request.dia());
         itinerarioRepo.save(itinerario);
         return ItemItinerarioUsuarioDTO.from(item);
     }
@@ -281,7 +327,7 @@ public class ServiceItinerariosUsuario {
     @Transactional
     public ItemItinerarioUsuarioDTO actualizarItem(
             Long idUsuario, Long id, Long idItem, ItemFavoritoRequest request) {
-        cargarConOwnership(idUsuario, id);
+        ItinerarioUsuario itinerario = cargarConOwnership(idUsuario, id);
         ItemItinerarioUsuario item = itemRepo
                 .findByIdAndItinerarioUsuario_IdItinerarioUsuario(idItem, id)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -293,7 +339,11 @@ public class ServiceItinerariosUsuario {
         item.setDireccion(request.direccion());
         item.setDia(request.dia());
         item.setHora(request.hora());
-        return ItemItinerarioUsuarioDTO.from(itemRepo.save(item));
+        ItemItinerarioUsuarioDTO actualizado = ItemItinerarioUsuarioDTO.from(itemRepo.save(item));
+
+        expandirDuracionSiHaceFalta(itinerario, request.dia());
+        itinerarioRepo.save(itinerario);
+        return actualizado;
     }
 
     /* ---------------------------------------------------------------- *

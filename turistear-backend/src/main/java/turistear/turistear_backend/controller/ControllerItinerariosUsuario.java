@@ -13,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import turistear.turistear_backend.dto.common.ErrorResponse;
+import turistear.turistear_backend.dto.favoritos.ActualizarFechaInicioRequest;
+import turistear.turistear_backend.dto.favoritos.ActualizarTituloRequest;
 import turistear.turistear_backend.dto.favoritos.AgregarFotoItinerarioRequest;
 import turistear.turistear_backend.dto.favoritos.CrearItinerarioRequest;
 import turistear.turistear_backend.dto.favoritos.FotoItinerarioUsuarioDTO;
@@ -20,7 +22,6 @@ import turistear.turistear_backend.dto.favoritos.ItemFavoritoRequest;
 import turistear.turistear_backend.dto.favoritos.ItemItinerarioUsuarioDTO;
 import turistear.turistear_backend.dto.favoritos.ItinerarioUsuarioDTO;
 import turistear.turistear_backend.dto.favoritos.ItinerarioUsuarioResumenDTO;
-import turistear.turistear_backend.dto.favoritos.UpdateItinerarioUsuarioRequest;
 import turistear.turistear_backend.security.AuthUtils;
 import turistear.turistear_backend.service.ServiceItinerariosUsuario;
 
@@ -111,21 +112,38 @@ public class ControllerItinerariosUsuario {
         return serviceItinerarios.obtenerDetalle(idUsuario, id);
     }
 
-    @PutMapping("/{id}")
-    @Operation(summary = "Actualizar fechas de un itinerario")
+    @PatchMapping("/{id}/titulo")
+    @Operation(summary = "Renombrar un itinerario")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Itinerario actualizado"),
-            @ApiResponse(responseCode = "400", description = "Fechas inválidas",
+            @ApiResponse(responseCode = "200", description = "Título actualizado"),
+            @ApiResponse(responseCode = "400", description = "Título inválido",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "404", description = "Itinerario no encontrado",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    public ItinerarioUsuarioDTO actualizar(
+    public ItinerarioUsuarioDTO actualizarTitulo(
             @PathVariable Long id,
-            @Valid @RequestBody UpdateItinerarioUsuarioRequest request,
+            @Valid @RequestBody ActualizarTituloRequest request,
             Authentication authentication) {
         Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
-        return serviceItinerarios.actualizarFechas(idUsuario, id, request);
+        return serviceItinerarios.actualizarTitulo(idUsuario, id, request);
+    }
+
+    @PatchMapping("/{id}/fecha-inicio")
+    @Operation(summary = "Reprogramar la fecha de inicio (la de fin se deriva de la duración)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Fecha de inicio actualizada"),
+            @ApiResponse(responseCode = "400", description = "Fecha inválida",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Itinerario no encontrado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ItinerarioUsuarioDTO actualizarFechaInicio(
+            @PathVariable Long id,
+            @Valid @RequestBody ActualizarFechaInicioRequest request,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return serviceItinerarios.actualizarFechaInicio(idUsuario, id, request);
     }
 
     @DeleteMapping("/{id}")
