@@ -49,13 +49,13 @@ public interface ItinerarioUsuarioRepository extends JpaRepository<ItinerarioUsu
 
     /**
      * Carga completa para endpoints que devuelven {@code ItinerarioUsuarioDTO}:
-     * trae items y etiquetas propias en una query con DISTINCT. Incluye el
-     * ownership check. Usado por {@code GET /itinerarios/\{id\}} y {@code PUT}.
+     * trae items en una sola query con DISTINCT. Etiquetas y fotos cargan
+     * lazy dentro de la misma transacción — evita el producto cartesiano
+     * que duplicaba items cuando había dos LEFT JOIN FETCH sobre colecciones.
      */
     @Query("""
         SELECT DISTINCT iu FROM ItinerarioUsuario iu
         LEFT JOIN FETCH iu.items
-        LEFT JOIN FETCH iu.etiquetas
         WHERE iu.idItinerarioUsuario = :id
           AND iu.usuario.idUsuario   = :idUsuario
     """)
