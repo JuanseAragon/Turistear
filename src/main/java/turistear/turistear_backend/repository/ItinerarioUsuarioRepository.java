@@ -64,6 +64,20 @@ public interface ItinerarioUsuarioRepository extends JpaRepository<ItinerarioUsu
             @Param("idUsuario") Long idUsuario);
 
     /**
+     * Carga un itinerario de usuario por id sin filtrar por ownership.
+     * Trae los items en la misma query; el resto de las colecciones se
+     * cargan lazy. Útil para operaciones autorizadas por membresía de grupo
+     * (vista previa de una opción, copia del ganador) donde el usuario que
+     * consulta no es necesariamente el dueño del itinerario original.
+     */
+    @Query("""
+        SELECT DISTINCT iu FROM ItinerarioUsuario iu
+        LEFT JOIN FETCH iu.items
+        WHERE iu.idItinerarioUsuario = :id
+    """)
+    Optional<ItinerarioUsuario> findByIdItinerarioUsuarioConItems(@Param("id") Long idItinerarioUsuario);
+
+    /**
      * Itinerario marcado con la "tachuela", sin filtrar por fecha. Lo usa
      * {@code togglePin} para hallar el fijado actual y desfijarlo. Solo
      * puede haber uno a la vez.
