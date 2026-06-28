@@ -23,10 +23,10 @@ public class JwtService {
     private long jwtExpiration;
 
     /**
-     * Genera un token JWT a partir de un Usuario, incluyendo claims útiles
-     * (idUsuario, nombre) y el email como subject.
+     * Genera el access token (JWT de corta duración) a partir de un Usuario,
+     * incluyendo claims útiles (idUsuario, nombre) y el email como subject.
      */
-    public String generateToken(Usuario usuario) {
+    public String generateAccessToken(Usuario usuario) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + jwtExpiration);
 
