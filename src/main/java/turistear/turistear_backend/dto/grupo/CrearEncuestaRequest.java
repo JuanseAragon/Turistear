@@ -11,7 +11,7 @@ import java.util.List;
  */
 public record CrearEncuestaRequest(
         @Schema(description = "Nombre opcional de la encuesta")
-        @Size(max = 120, message = "El nombre no puede superar los 120 caracteres")
+        @Size(max = 35, message = "El nombre no puede superar los 35 caracteres")
         String nombre,
 
         @Schema(description = "Opciones propuestas para la encuesta")

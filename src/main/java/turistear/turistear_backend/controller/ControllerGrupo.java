@@ -91,6 +91,25 @@ public class ControllerGrupo {
         return ResponseEntity.ok(serviceGrupo.obtenerDetalle(idUsuario, id));
     }
 
+    @PutMapping("/{id}")
+    @Operation(summary = "Actualizar un grupo")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Grupo actualizado"),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "No es creador",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Grupo no encontrado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<GrupoDTO> actualizarGrupo(
+            @PathVariable Long id,
+            @Valid @RequestBody ActualizarGrupoRequest request,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return ResponseEntity.ok(serviceGrupo.actualizarGrupo(idUsuario, id, request));
+    }
+
     @DeleteMapping("/{id}/salir")
     @Operation(summary = "Salir de un grupo")
     @ApiResponses({

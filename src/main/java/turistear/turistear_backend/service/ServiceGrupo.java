@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import turistear.turistear_backend.dto.grupo.*;
+
 import turistear.turistear_backend.enumerable.EstadoEncuesta;
 import turistear.turistear_backend.enumerable.RolGrupo;
 import turistear.turistear_backend.exception.BadRequestException;
@@ -27,7 +28,7 @@ import java.util.Optional;
 public class ServiceGrupo {
 
     private static final int LONGITUD_CODIGO = 8;
-    private static final int MINUTOS_VALIDEZ_CODIGO = 15;
+    private static final int MINUTOS_VALIDEZ_CODIGO = 10;
     private static final String CARACTERES_CODIGO = "0123456789ABCDEF";
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -99,7 +100,7 @@ public class ServiceGrupo {
         miembroRepo.save(nuevo);
 
         long cantidad = miembroRepo.countByGrupo_IdGrupo(grupo.getIdGrupo());
-        boolean soyCreador = grupo.getCreador().getIdUsuario().equals(idUsuario);
+        boolean soyCreador = nuevo.getRol() == RolGrupo.CREADOR;
         boolean tieneEncuestaAbierta = encuestaRepo.existsByGrupo_IdGrupoAndEstado(
                 grupo.getIdGrupo(), EstadoEncuesta.ABIERTA);
         return GrupoDTO.from(grupo, (int) cantidad, soyCreador, tieneEncuestaAbierta,
@@ -117,7 +118,7 @@ public class ServiceGrupo {
         return miembroRepo.findByUsuario_IdUsuario(idUsuario).stream()
                 .map(m -> {
                     Grupo grupo = m.getGrupo();
-                    boolean soyCreador = grupo.getCreador().getIdUsuario().equals(idUsuario);
+                    boolean soyCreador = m.getRol() == RolGrupo.CREADOR;
                     boolean tieneEncuestaAbierta = encuestaRepo.existsByGrupo_IdGrupoAndEstado(
                             grupo.getIdGrupo(), EstadoEncuesta.ABIERTA);
                     return GrupoResumenDTO.from(grupo,
@@ -133,15 +134,37 @@ public class ServiceGrupo {
 
     @Transactional(readOnly = true)
     public GrupoDTO obtenerDetalle(Long idUsuario, Long idGrupo) {
-        verificarMiembro(idGrupo, idUsuario);
+        MiembroGrupo miembro = verificarMiembro(idGrupo, idUsuario);
         Grupo grupo = buscarGrupo(idGrupo);
         List<MiembroDTO> miembros = miembroRepo.findByGrupo_IdGrupo(idGrupo).stream()
                 .map(MiembroDTO::from)
                 .toList();
-        boolean soyCreador = grupo.getCreador().getIdUsuario().equals(idUsuario);
+        boolean soyCreador = miembro.getRol() == RolGrupo.CREADOR;
         boolean tieneEncuestaAbierta = encuestaRepo.existsByGrupo_IdGrupoAndEstado(
                 idGrupo, EstadoEncuesta.ABIERTA);
         return GrupoDTO.from(grupo, miembros.size(), soyCreador, tieneEncuestaAbierta, miembros);
+    }
+
+    /* ---------------------------------------------------------------- *
+     *  PUT /grupos/{id}
+     * ---------------------------------------------------------------- */
+
+    @Transactional
+    public GrupoDTO actualizarGrupo(Long idUsuario, Long idGrupo, ActualizarGrupoRequest request) {
+        verificarCreador(idGrupo, idUsuario);
+        Grupo grupo = buscarGrupo(idGrupo);
+
+        grupo.setNombre(request.nombre());
+        grupo.setDescripcion(request.descripcion());
+        grupo.setFotoPortada(request.fotoPortada());
+
+        Grupo guardado = grupoRepo.save(grupo);
+        List<MiembroDTO> miembros = miembroRepo.findByGrupo_IdGrupo(idGrupo).stream()
+                .map(MiembroDTO::from)
+                .toList();
+        boolean tieneEncuestaAbierta = encuestaRepo.existsByGrupo_IdGrupoAndEstado(
+                idGrupo, EstadoEncuesta.ABIERTA);
+        return GrupoDTO.from(guardado, miembros.size(), true, tieneEncuestaAbierta, miembros);
     }
 
     /* ---------------------------------------------------------------- *
@@ -157,18 +180,19 @@ public class ServiceGrupo {
                 .filter(m -> !m.getUsuario().getIdUsuario().equals(idUsuario))
                 .toList();
 
-        if (restantes.isEmpty()) {
-            eliminarGrupoYRelacionados(idGrupo);
-            return;
-        }
-
-        if (miembro.getRol() == RolGrupo.CREADOR) {
+        if (miembro.getRol() == RolGrupo.CREADOR && !restantes.isEmpty()) {
             MiembroGrupo nuevoCreador = restantes.getFirst();
             nuevoCreador.setRol(RolGrupo.CREADOR);
             miembroRepo.save(nuevoCreador);
         }
 
         miembroRepo.delete(miembro);
+        miembroRepo.flush();
+
+        long quedan = miembroRepo.countByGrupo_IdGrupo(idGrupo);
+        if (quedan == 0L) {
+            eliminarGrupoYRelacionados(idGrupo);
+        }
     }
 
     /* ---------------------------------------------------------------- *

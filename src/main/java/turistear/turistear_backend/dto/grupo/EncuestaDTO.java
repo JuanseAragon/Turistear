@@ -21,14 +21,16 @@ public record EncuestaDTO(
         OpcionEncuestaDTO opcionGanadora,
         boolean yaVoto,
         boolean puedeFinalizar,
-        Long idOpcionVotada
+        Long idOpcionVotada,
+        int cantidadMiembros
 ) {
     public static EncuestaDTO from(Encuesta encuesta,
                                     List<OpcionEncuestaDTO> opciones,
                                     OpcionEncuestaDTO opcionGanadora,
                                     boolean yaVoto,
                                     boolean puedeFinalizar,
-                                    Long idOpcionVotada) {
+                                    Long idOpcionVotada,
+                                    int cantidadMiembros) {
         if (encuesta == null) return null;
         return new EncuestaDTO(
                 encuesta.getIdEncuesta(),
@@ -42,7 +44,8 @@ public record EncuestaDTO(
                 opcionGanadora,
                 yaVoto,
                 puedeFinalizar,
-                idOpcionVotada
+                idOpcionVotada,
+                cantidadMiembros
         );
     }
 }

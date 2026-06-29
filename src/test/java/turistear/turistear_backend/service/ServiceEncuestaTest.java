@@ -10,7 +10,7 @@ import turistear.turistear_backend.dto.grupo.*;
 import turistear.turistear_backend.enumerable.EstadoEncuesta;
 import turistear.turistear_backend.enumerable.Provincia;
 import turistear.turistear_backend.enumerable.RolGrupo;
-import turistear.turistear_backend.exception.ConflictException;
+import turistear.turistear_backend.exception.BadRequestException;
 import turistear.turistear_backend.exception.ForbiddenException;
 import turistear.turistear_backend.exception.ResourceNotFoundException;
 import turistear.turistear_backend.model.*;
@@ -20,6 +20,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -43,6 +44,48 @@ class ServiceEncuestaTest {
     private ServiceEncuesta service;
 
     @Test
+    void crearEncuesta_sinNombreAsignaTituloPorDefecto() {
+        Usuario creador = usuario(1L, "Ana");
+        Grupo grupo = grupo(10L, creador);
+        MiembroGrupo miembro = miembro(grupo, creador, RolGrupo.CREADOR);
+        ItinerarioSistema sistema = ItinerarioSistema.builder()
+                .idItinerario(5L)
+                .titulo("Escapada a Mendoza")
+                .fotoPortada("foto.jpg")
+                .provincia(Provincia.MENDOZA)
+                .fechaInicio(LocalDate.now())
+                .fechaFin(LocalDate.now().plusDays(2))
+                .duracionDias(3)
+                .build();
+
+        when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 1L))
+                .thenReturn(Optional.of(miembro));
+        when(sistemaRepo.findById(5L)).thenReturn(Optional.of(sistema));
+        when(encuestaRepo.save(any(Encuesta.class))).thenAnswer(invocation -> {
+            Encuesta e = invocation.getArgument(0);
+            e.setIdEncuesta(100L);
+            return e;
+        });
+        when(opcionRepo.save(any(OpcionEncuesta.class))).thenAnswer(invocation -> {
+            OpcionEncuesta o = invocation.getArgument(0);
+            o.setId(20L);
+            return o;
+        });
+        doNothing().when(opcionRepo).flush();
+        when(votoRepo.countByOpcion_Id(any())).thenReturn(0L);
+        when(votoRepo.findByEncuesta_IdEncuestaAndUsuario_IdUsuario(100L, 1L)).thenReturn(Optional.empty());
+
+        CrearEncuestaRequest req = new CrearEncuestaRequest(
+                null,
+                List.of(new CrearEncuestaRequest.OpcionSolicitud(5L, null)));
+
+        EncuestaDTO dto = service.crearEncuesta(1L, 10L, req);
+
+        assertEquals("Encuesta de viaje", dto.nombre());
+        assertEquals(1, dto.opciones().size());
+    }
+
+    @Test
     void crearEncuestaConOpcionDelSistemaLaGuardaAbierta() {
         Usuario creador = usuario(1L, "Ana");
         Grupo grupo = grupo(10L, creador);
@@ -59,13 +102,18 @@ class ServiceEncuestaTest {
 
         when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 1L))
                 .thenReturn(Optional.of(miembro));
-        when(opcionRepo.findByEncuesta_Grupo_IdGrupo(10L)).thenReturn(List.of());
         when(sistemaRepo.findById(5L)).thenReturn(Optional.of(sistema));
         when(encuestaRepo.save(any(Encuesta.class))).thenAnswer(invocation -> {
             Encuesta e = invocation.getArgument(0);
             e.setIdEncuesta(100L);
             return e;
         });
+        when(opcionRepo.save(any(OpcionEncuesta.class))).thenAnswer(invocation -> {
+            OpcionEncuesta o = invocation.getArgument(0);
+            o.setId(20L);
+            return o;
+        });
+        doNothing().when(opcionRepo).flush();
         when(votoRepo.countByOpcion_Id(any())).thenReturn(0L);
         when(votoRepo.findByEncuesta_IdEncuestaAndUsuario_IdUsuario(100L, 1L)).thenReturn(Optional.empty());
 
@@ -85,28 +133,59 @@ class ServiceEncuestaTest {
     }
 
     @Test
-    void crearEncuesta_conItinerarioDuplicado_lanzaConflict() {
+    void crearEncuestaConVariasOpcionesPersisteTodas() {
         Usuario creador = usuario(1L, "Ana");
         Grupo grupo = grupo(10L, creador);
         MiembroGrupo miembro = miembro(grupo, creador, RolGrupo.CREADOR);
-        Encuesta encuesta = encuestaAbierta(100L, grupo, creador);
-        OpcionEncuesta opcionExistente = OpcionEncuesta.builder()
-                .id(20L)
-                .encuesta(encuesta)
-                .idItinerarioSistema(5L)
-                .tituloSnapshot("Escapada a Mendoza")
-                .propietario(creador)
+        ItinerarioSistema sistema1 = ItinerarioSistema.builder()
+                .idItinerario(5L)
+                .titulo("Escapada a Mendoza")
+                .fotoPortada("foto.jpg")
+                .provincia(Provincia.MENDOZA)
+                .fechaInicio(LocalDate.now())
+                .fechaFin(LocalDate.now().plusDays(2))
+                .duracionDias(3)
+                .build();
+        ItinerarioSistema sistema2 = ItinerarioSistema.builder()
+                .idItinerario(6L)
+                .titulo("Escapada a Córdoba")
+                .fotoPortada("foto2.jpg")
+                .provincia(Provincia.CORDOBA)
+                .fechaInicio(LocalDate.now())
+                .fechaFin(LocalDate.now().plusDays(2))
+                .duracionDias(3)
                 .build();
 
         when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 1L))
                 .thenReturn(Optional.of(miembro));
-        when(opcionRepo.findByEncuesta_Grupo_IdGrupo(10L)).thenReturn(List.of(opcionExistente));
+        when(sistemaRepo.findById(5L)).thenReturn(Optional.of(sistema1));
+        when(sistemaRepo.findById(6L)).thenReturn(Optional.of(sistema2));
+        when(encuestaRepo.save(any(Encuesta.class))).thenAnswer(invocation -> {
+            Encuesta e = invocation.getArgument(0);
+            e.setIdEncuesta(100L);
+            return e;
+        });
+        AtomicLong idGenerator = new AtomicLong(20L);
+        when(opcionRepo.save(any(OpcionEncuesta.class))).thenAnswer(invocation -> {
+            OpcionEncuesta o = invocation.getArgument(0);
+            o.setId(idGenerator.getAndIncrement());
+            return o;
+        });
+        doNothing().when(opcionRepo).flush();
+        when(votoRepo.countByOpcion_Id(any())).thenReturn(0L);
+        when(votoRepo.findByEncuesta_IdEncuestaAndUsuario_IdUsuario(100L, 1L)).thenReturn(Optional.empty());
 
         CrearEncuestaRequest req = new CrearEncuestaRequest(
-                null,
-                List.of(new CrearEncuestaRequest.OpcionSolicitud(5L, null)));
+                "Encuesta test",
+                List.of(
+                        new CrearEncuestaRequest.OpcionSolicitud(5L, null),
+                        new CrearEncuestaRequest.OpcionSolicitud(6L, null)));
 
-        assertThrows(ConflictException.class, () -> service.crearEncuesta(1L, 10L, req));
+        EncuestaDTO dto = service.crearEncuesta(1L, 10L, req);
+
+        assertEquals(2, dto.opciones().size());
+        verify(opcionRepo, times(2)).save(any(OpcionEncuesta.class));
+        verify(opcionRepo).flush();
     }
 
     @Test
@@ -120,7 +199,9 @@ class ServiceEncuestaTest {
         when(encuestaRepo.findByIdEncuesta(100L)).thenReturn(Optional.of(encuesta));
         when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 1L))
                 .thenReturn(Optional.of(miembro(grupo, creador, RolGrupo.CREADOR)));
+        when(miembroRepo.countByGrupo_IdGrupo(10L)).thenReturn(3L);
         when(opcionRepo.findByEncuesta_IdEncuesta(100L)).thenReturn(List.of(opcion1, opcion2));
+        when(votoRepo.countByEncuesta_IdEncuesta(100L)).thenReturn(3L);
         when(votoRepo.countByOpcion_Id(20L)).thenReturn(2L);
         when(votoRepo.countByOpcion_Id(21L)).thenReturn(1L);
 
@@ -143,7 +224,9 @@ class ServiceEncuestaTest {
         when(encuestaRepo.findByIdEncuesta(100L)).thenReturn(Optional.of(encuesta));
         when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 1L))
                 .thenReturn(Optional.of(miembro(grupo, creador, RolGrupo.CREADOR)));
+        when(miembroRepo.countByGrupo_IdGrupo(10L)).thenReturn(2L);
         when(opcionRepo.findByEncuesta_IdEncuesta(100L)).thenReturn(List.of(opcion1, opcion2));
+        when(votoRepo.countByEncuesta_IdEncuesta(100L)).thenReturn(2L);
         when(votoRepo.countByOpcion_Id(20L)).thenReturn(1L);
         when(votoRepo.countByOpcion_Id(21L)).thenReturn(1L);
 
@@ -153,6 +236,25 @@ class ServiceEncuestaTest {
         assertNull(resultado.ganador());
         assertEquals(2, resultado.opcionesEmpatadas().size());
         assertEquals(EstadoEncuesta.EMPATE, encuesta.getEstado());
+    }
+
+    @Test
+    void finalizarEncuestaConVotosFaltantesLanzaBadRequest() {
+        Usuario creador = usuario(1L, "Ana");
+        Grupo grupo = grupo(10L, creador);
+        Encuesta encuesta = encuestaAbierta(100L, grupo, creador);
+        OpcionEncuesta opcion1 = opcion(20L, encuesta, "Opción A");
+        OpcionEncuesta opcion2 = opcion(21L, encuesta, "Opción B");
+
+        when(encuestaRepo.findByIdEncuesta(100L)).thenReturn(Optional.of(encuesta));
+        when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 1L))
+                .thenReturn(Optional.of(miembro(grupo, creador, RolGrupo.CREADOR)));
+        when(miembroRepo.countByGrupo_IdGrupo(10L)).thenReturn(3L);
+        when(opcionRepo.findByEncuesta_IdEncuesta(100L)).thenReturn(List.of(opcion1, opcion2));
+        when(votoRepo.countByEncuesta_IdEncuesta(100L)).thenReturn(1L);
+
+        assertThrows(BadRequestException.class, () -> service.finalizarEncuesta(1L, 100L));
+        verify(encuestaRepo, never()).save(any());
     }
 
     @Test
@@ -254,9 +356,12 @@ class ServiceEncuestaTest {
     void eliminarEncuesta_creadorElimina() {
         Usuario creador = usuario(1L, "Ana");
         Grupo grupo = grupo(10L, creador);
+        MiembroGrupo miembro = miembro(grupo, creador, RolGrupo.CREADOR);
         Encuesta encuesta = encuestaAbierta(100L, grupo, creador);
 
         when(encuestaRepo.findById(100L)).thenReturn(Optional.of(encuesta));
+        when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 1L))
+                .thenReturn(Optional.of(miembro));
 
         service.eliminarEncuesta(1L, 100L);
 
@@ -267,11 +372,14 @@ class ServiceEncuestaTest {
     @Test
     void eliminarEncuesta_noCreadorLanzaForbidden() {
         Usuario creador = usuario(1L, "Ana");
-        Usuario miembro = usuario(2L, "Luis");
+        Usuario noCreador = usuario(2L, "Luis");
         Grupo grupo = grupo(10L, creador);
+        MiembroGrupo miembro = miembro(grupo, noCreador, RolGrupo.MIEMBRO);
         Encuesta encuesta = encuestaAbierta(100L, grupo, creador);
 
         when(encuestaRepo.findById(100L)).thenReturn(Optional.of(encuesta));
+        when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 2L))
+                .thenReturn(Optional.of(miembro));
 
         assertThrows(ForbiddenException.class, () -> service.eliminarEncuesta(2L, 100L));
         verify(encuestaRepo, never()).delete(any());

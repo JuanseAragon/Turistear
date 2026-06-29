@@ -49,7 +49,7 @@ public class Encuesta {
     @JoinColumn(name = "opcion_ganadora_id")
     private OpcionEncuesta opcionGanadora;
 
-    @Column(name = "nombre", length = 120)
+    @Column(name = "nombre", length = 35)
     private String nombre;
 
     @OneToMany(mappedBy = "encuesta", cascade = CascadeType.ALL, orphanRemoval = true)

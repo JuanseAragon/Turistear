@@ -56,38 +56,33 @@ public class ServiceEncuesta {
             throw new BadRequestException("La encuesta debe tener al menos una opción");
         }
 
-        Set<String> nuevosKeys = opcionesSolicitud.stream()
-                .map(s -> s.idItinerarioSistema() != null
-                        ? "S:" + s.idItinerarioSistema()
-                        : "U:" + s.idItinerarioUsuario())
-                .collect(Collectors.toSet());
-
-        List<OpcionEncuesta> opcionesExistentes = opcionRepo.findByEncuesta_Grupo_IdGrupo(idGrupo);
-        for (OpcionEncuesta op : opcionesExistentes) {
-            String key = op.getIdItinerarioSistema() != null
-                    ? "S:" + op.getIdItinerarioSistema()
-                    : "U:" + op.getIdItinerarioUsuario();
-            if (nuevosKeys.contains(key)) {
-                throw new ConflictException("Ya existe una encuesta de estos itinerarios");
-            }
-        }
-
         Grupo grupo = miembro.getGrupo();
         Usuario creador = miembro.getUsuario();
+        String nombre = request.nombre() != null && !request.nombre().isBlank()
+                ? request.nombre().trim()
+                : "Encuesta de viaje";
+
         Encuesta encuesta = Encuesta.builder()
                 .grupo(grupo)
                 .creador(creador)
                 .estado(EstadoEncuesta.ABIERTA)
                 .fechaCreacion(LocalDateTime.now())
-                .nombre(request.nombre())
+                .nombre(nombre)
                 .build();
 
-        for (CrearEncuestaRequest.OpcionSolicitud solicitud : opcionesSolicitud) {
-            encuesta.getOpciones().add(construirOpcion(solicitud, encuesta, creador, idUsuario));
-        }
+        // Se persiste primero la encuesta para obtener su id y evitar que
+        // Hibernate trate de flushear opciones transients junto con el padre.
+        Encuesta encuestaGuardada = encuestaRepo.save(encuesta);
 
-        Encuesta guardada = encuestaRepo.save(encuesta);
-        return armarEncuestaDTO(guardada, idUsuario);
+        List<OpcionEncuesta> opcionesGuardadas = new ArrayList<>();
+        for (CrearEncuestaRequest.OpcionSolicitud solicitud : opcionesSolicitud) {
+            OpcionEncuesta opcion = construirOpcion(solicitud, encuestaGuardada, creador, idUsuario);
+            opcionesGuardadas.add(opcionRepo.save(opcion));
+        }
+        opcionRepo.flush();
+
+        encuestaGuardada.getOpciones().addAll(opcionesGuardadas);
+        return armarEncuestaDTO(encuestaGuardada, idUsuario);
     }
 
     /* ---------------------------------------------------------------- *
@@ -97,10 +92,18 @@ public class ServiceEncuesta {
     @Transactional(readOnly = true)
     public List<EncuestaResumenDTO> listarEncuestas(Long idUsuario, Long idGrupo) {
         verificarMiembro(idGrupo, idUsuario);
+        int cantidadMiembrosActual = (int) miembroRepo.countByGrupo_IdGrupo(idGrupo);
         return encuestaRepo.findByGrupo_IdGrupoOrderByFechaCreacionDesc(idGrupo).stream()
-                .map(e -> EncuestaResumenDTO.from(e,
-                        votoRepo.countByEncuesta_IdEncuesta(e.getIdEncuesta()),
-                        (int) opcionRepo.countByEncuesta_IdEncuesta(e.getIdEncuesta())))
+                .map(e -> {
+                    long cantidadVotos = votoRepo.countByEncuesta_IdEncuesta(e.getIdEncuesta());
+                    int cantidadMiembros = e.getEstado() == EstadoEncuesta.ABIERTA
+                            ? cantidadMiembrosActual
+                            : (int) cantidadVotos;
+                    return EncuestaResumenDTO.from(e,
+                            cantidadVotos,
+                            (int) opcionRepo.countByEncuesta_IdEncuesta(e.getIdEncuesta()),
+                            cantidadMiembros);
+                })
                 .toList();
     }
 
@@ -169,6 +172,12 @@ public class ServiceEncuesta {
         List<OpcionEncuesta> opciones = opcionRepo.findByEncuesta_IdEncuesta(idEncuesta);
         if (opciones.isEmpty()) {
             throw new BadRequestException("La encuesta no tiene opciones");
+        }
+
+        int cantidadMiembros = (int) miembroRepo.countByGrupo_IdGrupo(encuesta.getGrupo().getIdGrupo());
+        long totalVotos = votoRepo.countByEncuesta_IdEncuesta(idEncuesta);
+        if (totalVotos < cantidadMiembros) {
+            throw new BadRequestException("Faltan votos: " + totalVotos + "/" + cantidadMiembros);
         }
 
         Map<Long, Long> votosPorOpcion = opciones.stream()
@@ -383,8 +392,12 @@ public class ServiceEncuesta {
         boolean yaVoto = votoUsuario.isPresent();
         Long idOpcionVotada = votoUsuario.map(v -> v.getOpcion().getId()).orElse(null);
         boolean puedeFinalizar = esCreador(encuesta.getGrupo().getIdGrupo(), idUsuario);
+        long cantidadVotos = votoRepo.countByEncuesta_IdEncuesta(encuesta.getIdEncuesta());
+        int cantidadMiembros = encuesta.getEstado() == EstadoEncuesta.ABIERTA
+                ? (int) miembroRepo.countByGrupo_IdGrupo(encuesta.getGrupo().getIdGrupo())
+                : (int) cantidadVotos;
 
-        return EncuestaDTO.from(encuesta, opciones, ganadoraDto, yaVoto, puedeFinalizar, idOpcionVotada);
+        return EncuestaDTO.from(encuesta, opciones, ganadoraDto, yaVoto, puedeFinalizar, idOpcionVotada, cantidadMiembros);
     }
 
     private boolean esCreador(Long idGrupo, Long idUsuario) {
@@ -449,9 +462,7 @@ public class ServiceEncuesta {
         Encuesta encuesta = encuestaRepo.findById(idEncuesta)
                 .orElseThrow(() -> new ResourceNotFoundException("Encuesta no encontrada"));
 
-        if (!encuesta.getCreador().getIdUsuario().equals(idUsuario)) {
-            throw new ForbiddenException("Solo el creador puede eliminar la encuesta");
-        }
+        verificarCreador(encuesta.getGrupo().getIdGrupo(), idUsuario);
 
         votoRepo.deleteByEncuesta_IdEncuesta(idEncuesta);
         encuestaRepo.delete(encuesta);

@@ -12,10 +12,11 @@ public record EncuestaResumenDTO(
         EstadoEncuesta estado,
         Integer cantidadVotos,
         int totalOpciones,
+        int cantidadMiembros,
         String ganadorTitulo,
         String ganadorFotoPortada
 ) {
-    public static EncuestaResumenDTO from(Encuesta encuesta, long cantidadVotos, int totalOpciones) {
+    public static EncuestaResumenDTO from(Encuesta encuesta, long cantidadVotos, int totalOpciones, int cantidadMiembros) {
         if (encuesta == null) return null;
         String tituloGanador = null;
         String fotoGanador = null;
@@ -29,6 +30,7 @@ public record EncuestaResumenDTO(
                 encuesta.getEstado(),
                 (int) cantidadVotos,
                 totalOpciones,
+                cantidadMiembros,
                 tituloGanador,
                 fotoGanador
         );

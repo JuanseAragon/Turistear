@@ -6,10 +6,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import turistear.turistear_backend.dto.grupo.ActualizarGrupoRequest;
 import turistear.turistear_backend.dto.grupo.CodigoInvitacionDTO;
 import turistear.turistear_backend.dto.grupo.CrearGrupoRequest;
 import turistear.turistear_backend.dto.grupo.GrupoDTO;
 import turistear.turistear_backend.enumerable.RolGrupo;
+import turistear.turistear_backend.exception.ForbiddenException;
 import turistear.turistear_backend.model.*;
 import turistear.turistear_backend.repository.*;
 
@@ -75,7 +77,7 @@ class ServiceGrupoTest {
                 .grupo(grupo)
                 .codigo("ABC12345")
                 .fechaGeneracion(LocalDateTime.now())
-                .fechaExpiracion(LocalDateTime.now().plusMinutes(15))
+                .fechaExpiracion(LocalDateTime.now().plusMinutes(10))
                 .build();
 
         when(codigoRepo.findByCodigo("ABC12345")).thenReturn(Optional.of(codigo));
@@ -114,16 +116,98 @@ class ServiceGrupoTest {
                 .thenReturn(Optional.of(creador));
         when(miembroRepo.findByGrupo_IdGrupoOrderByFechaUnionAsc(10L))
                 .thenReturn(List.of(antiguo, creador));
+        doNothing().when(miembroRepo).flush();
+        when(miembroRepo.countByGrupo_IdGrupo(10L)).thenReturn(1L);
 
         service.salirDeGrupo(1L, 10L);
 
         assertEquals(RolGrupo.CREADOR, antiguo.getRol());
         verify(miembroRepo).save(antiguo);
         verify(miembroRepo).delete(creador);
+        verify(miembroRepo).flush();
+        verify(miembroRepo).countByGrupo_IdGrupo(10L);
     }
 
     @Test
-    void generarCodigoInvitacionCreaCodigoDe8CaracteresCon15MinutosDeValidez() {
+    void salirDeGrupo_ultimoMiembroEliminaGrupoYRelacionados() {
+        Grupo grupo = grupo(10L, usuario(1L, "Ana"));
+        MiembroGrupo creador = MiembroGrupo.builder()
+                .id(1L).grupo(grupo).usuario(usuario(1L, "Ana"))
+                .rol(RolGrupo.CREADOR).fechaUnion(LocalDateTime.now())
+                .build();
+
+        when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 1L))
+                .thenReturn(Optional.of(creador));
+        when(miembroRepo.findByGrupo_IdGrupoOrderByFechaUnionAsc(10L))
+                .thenReturn(List.of(creador));
+        doNothing().when(miembroRepo).flush();
+        when(miembroRepo.countByGrupo_IdGrupo(10L)).thenReturn(0L);
+        doNothing().when(votoRepo).deleteByEncuesta_Grupo_IdGrupo(10L);
+        doNothing().when(opcionRepo).deleteByEncuesta_Grupo_IdGrupo(10L);
+        doNothing().when(encuestaRepo).deleteByGrupo_IdGrupo(10L);
+        doNothing().when(codigoRepo).deleteByGrupo_IdGrupo(10L);
+        doNothing().when(miembroRepo).deleteByGrupo_IdGrupo(10L);
+        doNothing().when(grupoRepo).deleteById(10L);
+
+        service.salirDeGrupo(1L, 10L);
+
+        verify(miembroRepo).delete(creador);
+        verify(miembroRepo).flush();
+        verify(miembroRepo).countByGrupo_IdGrupo(10L);
+        verify(votoRepo).deleteByEncuesta_Grupo_IdGrupo(10L);
+        verify(opcionRepo).deleteByEncuesta_Grupo_IdGrupo(10L);
+        verify(encuestaRepo).deleteByGrupo_IdGrupo(10L);
+        verify(codigoRepo).deleteByGrupo_IdGrupo(10L);
+        verify(miembroRepo).deleteByGrupo_IdGrupo(10L);
+        verify(grupoRepo).deleteById(10L);
+    }
+
+    @Test
+    void actualizarGrupo_creadorActualizaDatos() {
+        Usuario creador = usuario(1L, "Ana");
+        Grupo grupo = grupo(10L, creador);
+        MiembroGrupo miembro = MiembroGrupo.builder()
+                .id(1L).grupo(grupo).usuario(creador)
+                .rol(RolGrupo.CREADOR).fechaUnion(LocalDateTime.now())
+                .build();
+
+        when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 1L))
+                .thenReturn(Optional.of(miembro));
+        when(grupoRepo.findById(10L)).thenReturn(Optional.of(grupo));
+        when(grupoRepo.save(grupo)).thenReturn(grupo);
+        when(miembroRepo.findByGrupo_IdGrupo(10L)).thenReturn(List.of(miembro));
+        when(encuestaRepo.existsByGrupo_IdGrupoAndEstado(10L, turistear.turistear_backend.enumerable.EstadoEncuesta.ABIERTA))
+                .thenReturn(false);
+
+        GrupoDTO dto = service.actualizarGrupo(1L, 10L,
+                new ActualizarGrupoRequest("Nuevo nombre", "Nueva descripción", "https://nueva.jpg"));
+
+        assertEquals("Nuevo nombre", dto.nombre());
+        assertEquals("Nueva descripción", dto.descripcion());
+        assertEquals("https://nueva.jpg", dto.fotoPortada());
+        verify(grupoRepo).save(grupo);
+    }
+
+    @Test
+    void actualizarGrupo_noCreadorLanzaForbidden() {
+        Usuario creador = usuario(1L, "Ana");
+        Usuario noCreador = usuario(2L, "Luis");
+        Grupo grupo = grupo(10L, creador);
+        MiembroGrupo miembro = MiembroGrupo.builder()
+                .id(2L).grupo(grupo).usuario(noCreador)
+                .rol(RolGrupo.MIEMBRO).fechaUnion(LocalDateTime.now())
+                .build();
+
+        when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 2L))
+                .thenReturn(Optional.of(miembro));
+
+        assertThrows(ForbiddenException.class, () -> service.actualizarGrupo(2L, 10L,
+                new ActualizarGrupoRequest("Nuevo nombre", null, null)));
+        verify(grupoRepo, never()).save(any());
+    }
+
+    @Test
+    void generarCodigoInvitacionCreaCodigoDe8CaracteresCon10MinutosDeValidez() {
         Grupo grupo = grupo(10L, usuario(1L, "Ana"));
         MiembroGrupo creador = MiembroGrupo.builder()
                 .id(1L).grupo(grupo).usuario(usuario(1L, "Ana"))
@@ -144,7 +228,7 @@ class ServiceGrupoTest {
 
         assertEquals(8, dto.codigo().length());
         long minutos = Duration.between(LocalDateTime.now(), dto.fechaExpiracion()).toMinutes();
-        assertTrue(minutos >= 14 && minutos <= 16);
+        assertTrue(minutos >= 9 && minutos <= 11);
 
         ArgumentCaptor<CodigoInvitacion> captor = ArgumentCaptor.forClass(CodigoInvitacion.class);
         verify(codigoRepo).save(captor.capture());
