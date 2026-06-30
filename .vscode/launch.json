@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-TuristearBackendApplication<turistear-backend>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "turistear.turistear_backend.TuristearBackendApplication",
+            "projectName": "turistear-backend",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
