@@ -19,7 +19,7 @@ import java.util.Set;
  * Lógica de itinerarios precargados del sistema. Maneja Explorar,
  * Buscar por preferencias, Ranking, detalle y borrado (admin).
  * No toca copias del usuario — eso es responsabilidad de
- * {@link ServiceFavoritos}.
+ * {@link FavoritoService}.
  */
 @Service
 @RequiredArgsConstructor

@@ -22,6 +22,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class UsuarioService {
 
+    /** Total de divisiones que cuentan para el mapa: 23 provincias + CABA. */
+    private static final int TOTAL_PROVINCIAS_ARGENTINA = 24;
+
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final ItinerarioUsuarioRepository itinerarioUsuarioRepository;
@@ -82,7 +85,7 @@ public class UsuarioService {
                 .collect(Collectors.toList());
 
         int total = provincias.size();
-        int porcentaje = total == 0 ? 0 : Math.round((total * 100f) / 24);
+        int porcentaje = total == 0 ? 0 : Math.round((total * 100f) / TOTAL_PROVINCIAS_ARGENTINA);
 
         Long dias = itinerarioUsuarioRepository.findDiasTotalesViajados(idUsuario);
 
