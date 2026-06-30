@@ -14,6 +14,10 @@ public interface AsistenciaItemGrupoRepository extends JpaRepository<AsistenciaI
     /** Upsert de asistencia: buscar existente antes de crear (mismo patrón que Voto). */
     Optional<AsistenciaItemGrupo> findByItem_IdAndUsuario_IdUsuario(Long idItem, Long idUsuario);
 
+    /** Asistencias registradas para un único item (con el usuario ya cargado). */
+    @EntityGraph(attributePaths = "usuario")
+    List<AsistenciaItemGrupo> findByItem_Id(Long idItem);
+
     /**
      * Trae TODAS las asistencias de TODOS los items de un itinerario de
      * grupo en una sola query (con el usuario ya cargado, evita N+1 al armar
