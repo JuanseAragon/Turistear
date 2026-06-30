@@ -16,6 +16,7 @@ import turistear.turistear_backend.dto.auth.AuthResponse;
 import turistear.turistear_backend.dto.auth.ChangePasswordRequest;
 import turistear.turistear_backend.dto.auth.LoginRequest;
 import turistear.turistear_backend.dto.auth.RegisterRequest;
+import turistear.turistear_backend.dto.auth.RefreshTokenRequest;
 import turistear.turistear_backend.dto.common.ErrorResponse;
 import turistear.turistear_backend.service.AuthService;
 
@@ -57,14 +58,31 @@ public class ControllerAuth {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/logout")
-    @Operation(summary = "Cerrar sesión")
+    @PostMapping("/refresh")
+    @SecurityRequirements // público: la prueba de identidad es poseer un refresh token válido
+    @Operation(summary = "Renovar el access token usando un refresh token")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Logout exitoso"),
-            @ApiResponse(responseCode = "401", description = "No autenticado",
+            @ApiResponse(responseCode = "200", description = "Tokens renovados"),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Refresh token inválido, expirado o revocado",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    public ResponseEntity<Void> logout() {
+    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        AuthResponse response = authService.refrescar(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/logout")
+    @SecurityRequirements // público: revocar un refresh token propio no requiere access token vigente
+    @Operation(summary = "Cerrar sesión (revoca el refresh token)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Logout exitoso"),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
+        authService.logout(request);
         return ResponseEntity.ok().build();
     }
 

@@ -40,6 +40,10 @@ public class JwtService {
                 .compact();
     }
 
+    public String generateAccessToken(Usuario usuario) {
+        return generateToken(usuario);
+    }
+
     /**
      * Extrae el email (subject) del token.
      */
