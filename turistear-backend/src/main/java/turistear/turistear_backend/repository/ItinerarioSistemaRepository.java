@@ -21,7 +21,7 @@ public interface ItinerarioSistemaRepository extends JpaRepository<ItinerarioSis
     /**
      * Lista todos los itinerarios del sistema ordenados por popularidad,
      * leyendo el contador desnormalizado {@code likes} (lo mantiene
-     * ServiceFavoritos: +1 al guardar como favorito, -1 al quitarlo). Más
+     * FavoritoService: +1 al guardar como favorito, -1 al quitarlo). Más
      * simple y barato que contar en vivo las filas de itinerarios_usuario
      * con un JOIN + GROUP BY.
      * Usado por {@code GET /itinerario/explorar} (orden por defecto).
