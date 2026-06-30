@@ -16,6 +16,7 @@ import turistear.turistear_backend.repository.*;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -173,14 +174,23 @@ public class ServiceGrupo {
 
     @Transactional
     public void salirDeGrupo(Long idUsuario, Long idGrupo) {
-        MiembroGrupo miembro = verificarMiembro(idGrupo, idUsuario);
-        Grupo grupo = miembro.getGrupo();
+        // Lockeamos la fila del grupo para evitar condiciones de carrera
+        // cuando varios miembros salen simultáneamente.
+        grupoRepo.findWithLockById(idGrupo)
+                .orElseThrow(() -> new ResourceNotFoundException("Grupo no encontrado"));
+
+        MiembroGrupo miembro = miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(idGrupo, idUsuario)
+                .orElseThrow(() -> new ResourceNotFoundException("Grupo no encontrado"));
 
         List<MiembroGrupo> restantes = miembroRepo.findByGrupo_IdGrupoOrderByFechaUnionAsc(idGrupo).stream()
                 .filter(m -> !m.getUsuario().getIdUsuario().equals(idUsuario))
                 .toList();
 
         if (miembro.getRol() == RolGrupo.CREADOR && !restantes.isEmpty()) {
+            // Los códigos activos pertenecían al creador saliente; el nuevo creador
+            // debe generar uno propio si lo desea.
+            codigoRepo.deleteByGrupo_IdGrupo(idGrupo);
+
             MiembroGrupo nuevoCreador = restantes.getFirst();
             nuevoCreador.setRol(RolGrupo.CREADOR);
             miembroRepo.save(nuevoCreador);
@@ -273,12 +283,24 @@ public class ServiceGrupo {
     }
 
     private void eliminarGrupoYRelacionados(Long idGrupo) {
-        // Orden de borrado respetando las FKs.
+        // Voto no está en ninguna cascada del grupo, se borra en bulk.
         votoRepo.deleteByEncuesta_Grupo_IdGrupo(idGrupo);
-        opcionRepo.deleteByEncuesta_Grupo_IdGrupo(idGrupo);
-        encuestaRepo.deleteByGrupo_IdGrupo(idGrupo);
-        codigoRepo.deleteByGrupo_IdGrupo(idGrupo);
-        miembroRepo.deleteByGrupo_IdGrupo(idGrupo);
-        grupoRepo.deleteById(idGrupo);
+
+        Grupo grupo = buscarGrupo(idGrupo);
+
+        // Se rompe la referencia opcionGanadora y se limpian las opciones antes de
+        // dejar que la cascada/orphanRemoval borre las encuestas. De lo contrario,
+        // Hibernate encuentra una OpcionEncuesta ya eliminada en memoria y lanza
+        // TransientObjectException.
+        for (Encuesta encuesta : new ArrayList<>(grupo.getEncuestas())) {
+            encuesta.setOpcionGanadora(null);
+            encuesta.getOpciones().clear();
+        }
+
+        grupo.getEncuestas().clear();
+        grupo.getCodigosInvitacion().clear();
+        grupo.getMiembros().clear();
+
+        grupoRepo.delete(grupo);
     }
 }

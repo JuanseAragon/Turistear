@@ -12,6 +12,7 @@ import turistear.turistear_backend.dto.grupo.CrearGrupoRequest;
 import turistear.turistear_backend.dto.grupo.GrupoDTO;
 import turistear.turistear_backend.enumerable.RolGrupo;
 import turistear.turistear_backend.exception.ForbiddenException;
+import turistear.turistear_backend.exception.ResourceNotFoundException;
 import turistear.turistear_backend.model.*;
 import turistear.turistear_backend.repository.*;
 
@@ -103,6 +104,7 @@ class ServiceGrupoTest {
     @Test
     void salirDeGrupoPromueveAlMiembroMasAntiguoCuandoSaleElCreador() {
         Grupo grupo = grupo(10L, usuario(1L, "Ana"));
+        when(grupoRepo.findWithLockById(10L)).thenReturn(Optional.of(grupo));
         MiembroGrupo creador = MiembroGrupo.builder()
                 .id(1L).grupo(grupo).usuario(usuario(1L, "Ana"))
                 .rol(RolGrupo.CREADOR).fechaUnion(LocalDateTime.now().plusMinutes(1))
@@ -116,12 +118,14 @@ class ServiceGrupoTest {
                 .thenReturn(Optional.of(creador));
         when(miembroRepo.findByGrupo_IdGrupoOrderByFechaUnionAsc(10L))
                 .thenReturn(List.of(antiguo, creador));
+        doNothing().when(codigoRepo).deleteByGrupo_IdGrupo(10L);
         doNothing().when(miembroRepo).flush();
         when(miembroRepo.countByGrupo_IdGrupo(10L)).thenReturn(1L);
 
         service.salirDeGrupo(1L, 10L);
 
         assertEquals(RolGrupo.CREADOR, antiguo.getRol());
+        verify(codigoRepo).deleteByGrupo_IdGrupo(10L);
         verify(miembroRepo).save(antiguo);
         verify(miembroRepo).delete(creador);
         verify(miembroRepo).flush();
@@ -129,8 +133,18 @@ class ServiceGrupoTest {
     }
 
     @Test
+    void salirDeGrupo_grupoInexistente_lanzaNotFound() {
+        when(grupoRepo.findWithLockById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> service.salirDeGrupo(1L, 99L));
+        verify(grupoRepo).findWithLockById(99L);
+        verify(miembroRepo, never()).findByGrupo_IdGrupoAndUsuario_IdUsuario(anyLong(), anyLong());
+    }
+
+    @Test
     void salirDeGrupo_ultimoMiembroEliminaGrupoYRelacionados() {
         Grupo grupo = grupo(10L, usuario(1L, "Ana"));
+        when(grupoRepo.findWithLockById(10L)).thenReturn(Optional.of(grupo));
         MiembroGrupo creador = MiembroGrupo.builder()
                 .id(1L).grupo(grupo).usuario(usuario(1L, "Ana"))
                 .rol(RolGrupo.CREADOR).fechaUnion(LocalDateTime.now())
@@ -143,11 +157,7 @@ class ServiceGrupoTest {
         doNothing().when(miembroRepo).flush();
         when(miembroRepo.countByGrupo_IdGrupo(10L)).thenReturn(0L);
         doNothing().when(votoRepo).deleteByEncuesta_Grupo_IdGrupo(10L);
-        doNothing().when(opcionRepo).deleteByEncuesta_Grupo_IdGrupo(10L);
-        doNothing().when(encuestaRepo).deleteByGrupo_IdGrupo(10L);
-        doNothing().when(codigoRepo).deleteByGrupo_IdGrupo(10L);
-        doNothing().when(miembroRepo).deleteByGrupo_IdGrupo(10L);
-        doNothing().when(grupoRepo).deleteById(10L);
+        when(grupoRepo.findById(10L)).thenReturn(Optional.of(grupo));
 
         service.salirDeGrupo(1L, 10L);
 
@@ -155,11 +165,52 @@ class ServiceGrupoTest {
         verify(miembroRepo).flush();
         verify(miembroRepo).countByGrupo_IdGrupo(10L);
         verify(votoRepo).deleteByEncuesta_Grupo_IdGrupo(10L);
-        verify(opcionRepo).deleteByEncuesta_Grupo_IdGrupo(10L);
-        verify(encuestaRepo).deleteByGrupo_IdGrupo(10L);
-        verify(codigoRepo).deleteByGrupo_IdGrupo(10L);
-        verify(miembroRepo).deleteByGrupo_IdGrupo(10L);
-        verify(grupoRepo).deleteById(10L);
+        verify(grupoRepo).findById(10L);
+        verify(grupoRepo).delete(grupo);
+    }
+
+    @Test
+    void salirDeGrupo_ultimoMiembroConEncuestaFinalizadaNoLanzaTransientException() {
+        Usuario ana = usuario(1L, "Ana");
+        Grupo grupo = grupo(10L, ana);
+        when(grupoRepo.findWithLockById(10L)).thenReturn(Optional.of(grupo));
+        MiembroGrupo creador = MiembroGrupo.builder()
+                .id(1L).grupo(grupo).usuario(ana)
+                .rol(RolGrupo.CREADOR).fechaUnion(LocalDateTime.now())
+                .build();
+        grupo.getMiembros().add(creador);
+
+        Encuesta encuesta = Encuesta.builder()
+                .idEncuesta(100L)
+                .grupo(grupo)
+                .creador(ana)
+                .estado(turistear.turistear_backend.enumerable.EstadoEncuesta.FINALIZADA)
+                .fechaCreacion(LocalDateTime.now())
+                .build();
+        OpcionEncuesta opcion = OpcionEncuesta.builder()
+                .id(50L)
+                .encuesta(encuesta)
+                .tituloSnapshot("Opción ganadora")
+                .propietario(ana)
+                .build();
+        encuesta.getOpciones().add(opcion);
+        encuesta.setOpcionGanadora(opcion);
+        grupo.getEncuestas().add(encuesta);
+
+        when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 1L))
+                .thenReturn(Optional.of(creador));
+        when(miembroRepo.findByGrupo_IdGrupoOrderByFechaUnionAsc(10L))
+                .thenReturn(List.of(creador));
+        doNothing().when(miembroRepo).flush();
+        when(miembroRepo.countByGrupo_IdGrupo(10L)).thenReturn(0L);
+        doNothing().when(votoRepo).deleteByEncuesta_Grupo_IdGrupo(10L);
+        when(grupoRepo.findById(10L)).thenReturn(Optional.of(grupo));
+
+        assertDoesNotThrow(() -> service.salirDeGrupo(1L, 10L));
+
+        verify(votoRepo).deleteByEncuesta_Grupo_IdGrupo(10L);
+        verify(grupoRepo).delete(grupo);
+        assertNull(encuesta.getOpcionGanadora());
     }
 
     @Test
