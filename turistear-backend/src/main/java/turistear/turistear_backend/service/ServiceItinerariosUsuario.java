@@ -152,6 +152,17 @@ public class ServiceItinerariosUsuario {
             copia.getItems().add(itemCopia);
         }
 
+        // Si el sistema tiene foto de portada, la registramos también en fotos[]
+        // para que aparezca en el picker de edición. Invariante: fotoPortada == fotos[0].url.
+        if (sistema.getFotoPortada() != null && !sistema.getFotoPortada().isBlank()) {
+            FotoItinerarioUsuario fotoInicial = FotoItinerarioUsuario.builder()
+                    .itinerarioUsuario(copia)
+                    .url(sistema.getFotoPortada())
+                    .orden(0)
+                    .build();
+            copia.getFotos().add(fotoInicial);
+        }
+
         return ItinerarioUsuarioDTO.from(itinerarioRepo.save(copia));
     }
 
