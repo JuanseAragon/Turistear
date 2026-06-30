@@ -1,0 +1,302 @@
+package turistear.turistear_backend.controller;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+import turistear.turistear_backend.dto.common.ErrorResponse;
+import turistear.turistear_backend.dto.favoritos.ItinerarioUsuarioDTO;
+import turistear.turistear_backend.dto.grupo.*;
+import turistear.turistear_backend.security.AuthUtils;
+import turistear.turistear_backend.service.ServiceEncuesta;
+import turistear.turistear_backend.service.ServiceGrupo;
+
+import java.util.List;
+
+/**
+ * Endpoints para la gestión de grupos y sus encuestas.
+ * Requiere JWT; el {@code idUsuario} se extrae del token.
+ */
+@RestController
+@RequestMapping("/grupos")
+@RequiredArgsConstructor
+@Tag(name = "Grupos", description = "Creación de grupos, invitaciones, membresía y encuestas")
+public class ControllerGrupo {
+
+    private final ServiceGrupo serviceGrupo;
+    private final ServiceEncuesta serviceEncuesta;
+    private final AuthUtils authUtils;
+
+    /* ---------------- grupos ---------------- */
+
+    @PostMapping
+    @Operation(summary = "Crear un nuevo grupo")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Grupo creado"),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<GrupoDTO> crearGrupo(
+            @Valid @RequestBody CrearGrupoRequest request,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(serviceGrupo.crearGrupo(idUsuario, request));
+    }
+
+    @PostMapping("/unirse/{codigo}")
+    @Operation(summary = "Unirse a un grupo con un código de invitación")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Unido al grupo"),
+            @ApiResponse(responseCode = "400", description = "Código expirado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Código no válido",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "Ya es miembro",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<GrupoDTO> unirseAGrupo(
+            @PathVariable String codigo,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return ResponseEntity.ok(serviceGrupo.unirseAGrupo(idUsuario, codigo));
+    }
+
+    @GetMapping
+    @Operation(summary = "Listar mis grupos")
+    public List<GrupoResumenDTO> listarMisGrupos(Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return serviceGrupo.listarMisGrupos(idUsuario);
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Detalle de un grupo")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Grupo encontrado"),
+            @ApiResponse(responseCode = "404", description = "Grupo no encontrado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<GrupoDTO> obtenerDetalle(
+            @PathVariable Long id,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return ResponseEntity.ok(serviceGrupo.obtenerDetalle(idUsuario, id));
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Actualizar un grupo")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Grupo actualizado"),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "No es creador",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Grupo no encontrado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<GrupoDTO> actualizarGrupo(
+            @PathVariable Long id,
+            @Valid @RequestBody ActualizarGrupoRequest request,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return ResponseEntity.ok(serviceGrupo.actualizarGrupo(idUsuario, id, request));
+    }
+
+    @DeleteMapping("/{id}/salir")
+    @Operation(summary = "Salir de un grupo")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Saliste del grupo"),
+            @ApiResponse(responseCode = "404", description = "Grupo no encontrado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<Void> salirDeGrupo(
+            @PathVariable Long id,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        serviceGrupo.salirDeGrupo(idUsuario, id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/codigo")
+    @Operation(summary = "Generar código de invitación")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Código generado"),
+            @ApiResponse(responseCode = "403", description = "No es creador",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<CodigoInvitacionDTO> generarCodigoInvitacion(
+            @PathVariable Long id,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(serviceGrupo.generarCodigoInvitacion(idUsuario, id));
+    }
+
+    @GetMapping("/{id}/codigo-activo")
+    @Operation(summary = "Obtener el código de invitación activo")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Código activo encontrado"),
+            @ApiResponse(responseCode = "404", description = "No hay código activo",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<CodigoInvitacionDTO> obtenerCodigoActivo(
+            @PathVariable Long id,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return ResponseEntity.ok(serviceGrupo.obtenerCodigoActivo(idUsuario, id));
+    }
+
+    /* ---------------- encuestas ---------------- */
+
+    @PostMapping("/{idGrupo}/encuestas")
+    @Operation(summary = "Crear una encuesta en el grupo")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Encuesta creada"),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "Ya hay una encuesta abierta",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<EncuestaDTO> crearEncuesta(
+            @PathVariable Long idGrupo,
+            @Valid @RequestBody CrearEncuestaRequest request,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(serviceEncuesta.crearEncuesta(idUsuario, idGrupo, request));
+    }
+
+    @GetMapping("/{idGrupo}/encuestas")
+    @Operation(summary = "Listar encuestas de un grupo")
+    public List<EncuestaResumenDTO> listarEncuestas(
+            @PathVariable Long idGrupo,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return serviceEncuesta.listarEncuestas(idUsuario, idGrupo);
+    }
+
+    @GetMapping("/{idGrupo}/encuestas/{idEncuesta}")
+    @Operation(summary = "Detalle de una encuesta")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Encuesta encontrada"),
+            @ApiResponse(responseCode = "404", description = "Encuesta no encontrada",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<EncuestaDTO> obtenerDetalleEncuesta(
+            @PathVariable Long idGrupo,
+            @PathVariable Long idEncuesta,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return ResponseEntity.ok(serviceEncuesta.obtenerDetalleEncuesta(idUsuario, idEncuesta));
+    }
+
+    @PostMapping("/{idGrupo}/encuestas/{idEncuesta}/votar")
+    @Operation(summary = "Votar por una opción")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Voto registrado"),
+            @ApiResponse(responseCode = "400", description = "Encuesta cerrada",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "Ya votó",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<EncuestaDTO> votar(
+            @PathVariable Long idGrupo,
+            @PathVariable Long idEncuesta,
+            @Valid @RequestBody VotarRequest request,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return ResponseEntity.ok(serviceEncuesta.votar(idUsuario, idEncuesta, request.idOpcion()));
+    }
+
+    @PostMapping("/{idGrupo}/encuestas/{idEncuesta}/finalizar")
+    @Operation(summary = "Finalizar una encuesta")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Encuesta finalizada"),
+            @ApiResponse(responseCode = "400", description = "No se puede finalizar",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "No es creador",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<ResultadoEncuestaDTO> finalizarEncuesta(
+            @PathVariable Long idGrupo,
+            @PathVariable Long idEncuesta,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return ResponseEntity.ok(serviceEncuesta.finalizarEncuesta(idUsuario, idEncuesta));
+    }
+
+    @PostMapping("/{idGrupo}/encuestas/{idEncuesta}/desempatar")
+    @Operation(summary = "Resolver un empate manualmente")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Empate resuelto"),
+            @ApiResponse(responseCode = "400", description = "La encuesta no está en empate",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "No es creador",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<ResultadoEncuestaDTO> desempatar(
+            @PathVariable Long idGrupo,
+            @PathVariable Long idEncuesta,
+            @Valid @RequestBody DesempateRequest request,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return ResponseEntity.ok(serviceEncuesta.desempatar(idUsuario, idEncuesta, request.idOpcionGanadora()));
+    }
+
+    @PostMapping("/{idGrupo}/encuestas/{idEncuesta}/copiar")
+    @Operation(summary = "Copiar el itinerario ganador a mis itinerarios")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Itinerario copiado"),
+            @ApiResponse(responseCode = "400", description = "La encuesta no está finalizada o no hay favorito",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<ItinerarioUsuarioDTO> copiarGanador(
+            @PathVariable Long idGrupo,
+            @PathVariable Long idEncuesta,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return ResponseEntity.ok(serviceEncuesta.copiarGanador(idUsuario, idEncuesta));
+    }
+
+    @DeleteMapping("/{idGrupo}/encuestas/{idEncuesta}")
+    @Operation(summary = "Eliminar una encuesta (solo creador)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Encuesta eliminada"),
+            @ApiResponse(responseCode = "403", description = "No es el creador de la encuesta",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Encuesta no encontrada",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<Void> eliminarEncuesta(
+            @PathVariable Long idGrupo,
+            @PathVariable Long idEncuesta,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        serviceEncuesta.eliminarEncuesta(idUsuario, idEncuesta);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{idGrupo}/encuestas/{idEncuesta}/opciones/{idOpcion}/detalle")
+    @Operation(summary = "Ver el detalle del itinerario de una opción")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Detalle obtenido"),
+            @ApiResponse(responseCode = "404", description = "Opción o itinerario no encontrado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<Object> obtenerDetalleOpcion(
+            @PathVariable Long idGrupo,
+            @PathVariable Long idEncuesta,
+            @PathVariable Long idOpcion,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return ResponseEntity.ok(serviceEncuesta.obtenerDetalleOpcion(idUsuario, idEncuesta, idOpcion));
+    }
+}
