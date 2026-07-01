@@ -8,6 +8,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import turistear.turistear_backend.dto.grupo.*;
 import turistear.turistear_backend.enumerable.EstadoEncuesta;
+import turistear.turistear_backend.enumerable.EstadoItemItinerarioGrupo;
 import turistear.turistear_backend.enumerable.Provincia;
 import turistear.turistear_backend.enumerable.RolGrupo;
 import turistear.turistear_backend.exception.BadRequestException;
@@ -38,6 +39,7 @@ class ServiceEncuestaTest {
     @Mock private ItinerarioSistemaRepository sistemaRepo;
     @Mock private ItinerarioUsuarioRepository itinerarioUsuarioRepo;
     @Mock private FavoritoRepository favoritoRepo;
+    @Mock private ItinerarioGrupoRepository itinerarioGrupoRepo;
     @Mock private ServiceItinerariosUsuario serviceItinerariosUsuario;
 
     @InjectMocks
@@ -194,6 +196,7 @@ class ServiceEncuestaTest {
         Grupo grupo = grupo(10L, creador);
         Encuesta encuesta = encuestaAbierta(100L, grupo, creador);
         OpcionEncuesta opcion1 = opcion(20L, encuesta, "Opción A");
+        opcion1.setIdItinerarioSistema(5L); // la ganadora referencia un itinerario del sistema
         OpcionEncuesta opcion2 = opcion(21L, encuesta, "Opción B");
 
         when(encuestaRepo.findByIdEncuesta(100L)).thenReturn(Optional.of(encuesta));
@@ -204,6 +207,7 @@ class ServiceEncuestaTest {
         when(votoRepo.countByEncuesta_IdEncuesta(100L)).thenReturn(3L);
         when(votoRepo.countByOpcion_Id(20L)).thenReturn(2L);
         when(votoRepo.countByOpcion_Id(21L)).thenReturn(1L);
+        when(sistemaRepo.findDetalleById(5L)).thenReturn(Optional.of(sistemaConUnItem(5L)));
 
         ResultadoEncuestaDTO resultado = service.finalizarEncuesta(1L, 100L);
 
@@ -211,6 +215,57 @@ class ServiceEncuestaTest {
         assertEquals(20L, resultado.ganador().id());
         assertEquals(EstadoEncuesta.FINALIZADA, encuesta.getEstado());
         assertEquals(opcion1, encuesta.getOpcionGanadora());
+
+        // El ganador se clona como itinerario compartido del grupo (snapshot).
+        ArgumentCaptor<ItinerarioGrupo> captor = ArgumentCaptor.forClass(ItinerarioGrupo.class);
+        verify(itinerarioGrupoRepo).save(captor.capture());
+        ItinerarioGrupo creado = captor.getValue();
+        assertEquals(grupo, creado.getGrupo());
+        assertEquals(encuesta, creado.getEncuestaOrigen());
+        assertEquals("Sistema", creado.getTitulo());
+        assertEquals(1, creado.getItems().size());
+        assertEquals(EstadoItemItinerarioGrupo.CONFIRMADO, creado.getItems().get(0).getEstado());
+        assertEquals("City tour", creado.getItems().get(0).getNombreActividad());
+    }
+
+    @Test
+    void finalizarCreaItinerarioGrupoDesdeItinerarioDeUsuario() {
+        Usuario creador = usuario(1L, "Ana");
+        Grupo grupo = grupo(10L, creador);
+        Encuesta encuesta = encuestaAbierta(100L, grupo, creador);
+        OpcionEncuesta ganadora = opcion(20L, encuesta, "Mi viaje");
+        ganadora.setIdItinerarioUsuario(7L); // la ganadora es un itinerario propio de un miembro
+
+        ItinerarioUsuario origen = ItinerarioUsuario.builder()
+                .idItinerarioUsuario(7L)
+                .usuario(creador)
+                .titulo("Viaje propio")
+                .provincia(Provincia.CORDOBA)
+                .fechaInicio(LocalDate.now())
+                .fechaFin(LocalDate.now().plusDays(1))
+                .duracionDias(2)
+                .build();
+        origen.getItems().add(ItemItinerarioUsuario.builder()
+                .id(1L).itinerarioUsuario(origen).nombreActividad("Peña").dia(1).build());
+
+        when(encuestaRepo.findByIdEncuesta(100L)).thenReturn(Optional.of(encuesta));
+        when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 1L))
+                .thenReturn(Optional.of(miembro(grupo, creador, RolGrupo.CREADOR)));
+        when(miembroRepo.countByGrupo_IdGrupo(10L)).thenReturn(1L);
+        when(opcionRepo.findByEncuesta_IdEncuesta(100L)).thenReturn(List.of(ganadora));
+        when(votoRepo.countByEncuesta_IdEncuesta(100L)).thenReturn(1L);
+        when(votoRepo.countByOpcion_Id(20L)).thenReturn(1L);
+        when(itinerarioUsuarioRepo.findByIdItinerarioUsuarioConItems(7L)).thenReturn(Optional.of(origen));
+
+        service.finalizarEncuesta(1L, 100L);
+
+        ArgumentCaptor<ItinerarioGrupo> captor = ArgumentCaptor.forClass(ItinerarioGrupo.class);
+        verify(itinerarioGrupoRepo).save(captor.capture());
+        ItinerarioGrupo creado = captor.getValue();
+        assertEquals("Viaje propio", creado.getTitulo());
+        assertEquals(1, creado.getItems().size());
+        assertEquals("Peña", creado.getItems().get(0).getNombreActividad());
+        assertEquals(EstadoItemItinerarioGrupo.CONFIRMADO, creado.getItems().get(0).getEstado());
     }
 
     @Test
@@ -337,12 +392,14 @@ class ServiceEncuestaTest {
         Grupo grupo = grupo(10L, creador);
         Encuesta encuesta = encuestaEmpatada(100L, grupo, creador);
         OpcionEncuesta opcion = opcion(20L, encuesta, "Opción A");
+        opcion.setIdItinerarioSistema(5L);
 
         when(encuestaRepo.findByIdEncuesta(100L)).thenReturn(Optional.of(encuesta));
         when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 1L))
                 .thenReturn(Optional.of(miembro(grupo, creador, RolGrupo.CREADOR)));
         when(opcionRepo.findByIdAndEncuesta_IdEncuesta(20L, 100L)).thenReturn(Optional.of(opcion));
         when(votoRepo.countByOpcion_Id(20L)).thenReturn(1L);
+        when(sistemaRepo.findDetalleById(5L)).thenReturn(Optional.of(sistemaConUnItem(5L)));
 
         ResultadoEncuestaDTO resultado = service.desempatar(1L, 100L, 20L);
 
@@ -350,6 +407,8 @@ class ServiceEncuestaTest {
         assertEquals(20L, resultado.ganador().id());
         assertEquals(EstadoEncuesta.FINALIZADA, encuesta.getEstado());
         assertEquals(opcion, encuesta.getOpcionGanadora());
+        // Desempatar también genera el itinerario compartido del grupo.
+        verify(itinerarioGrupoRepo).save(any(ItinerarioGrupo.class));
     }
 
     @Test
@@ -441,5 +500,24 @@ class ServiceEncuestaTest {
                 .tituloSnapshot(titulo)
                 .propietario(encuesta.getCreador())
                 .build();
+    }
+
+    private ItinerarioSistema sistemaConUnItem(Long id) {
+        ItinerarioSistema sistema = ItinerarioSistema.builder()
+                .idItinerario(id)
+                .titulo("Sistema")
+                .descripcion("desc")
+                .provincia(Provincia.MENDOZA)
+                .fechaInicio(LocalDate.now())
+                .fechaFin(LocalDate.now().plusDays(1))
+                .fotoPortada("f.jpg")
+                .duracionDias(2)
+                .build();
+        Actividad act = Actividad.builder()
+                .idActividad(1L).nombre("City tour").descripcion("d")
+                .localidad("Centro").direccion("Calle 1").build();
+        sistema.getItems().add(ItemItinerarioSistema.builder()
+                .id(1L).itinerarioSistema(sistema).actividad(act).dia(1).build());
+        return sistema;
     }
 }

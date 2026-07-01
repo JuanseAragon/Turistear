@@ -37,6 +37,7 @@ class ServiceGrupoTest {
     @Mock private OpcionEncuestaRepository opcionRepo;
     @Mock private VotoRepository votoRepo;
     @Mock private UsuarioRepository usuarioRepo;
+    @Mock private ItinerarioGrupoRepository itinerarioGrupoRepo;
 
     @InjectMocks
     private ServiceGrupo service;
@@ -165,6 +166,7 @@ class ServiceGrupoTest {
         verify(miembroRepo).flush();
         verify(miembroRepo).countByGrupo_IdGrupo(10L);
         verify(votoRepo).deleteByEncuesta_Grupo_IdGrupo(10L);
+        verify(itinerarioGrupoRepo).deleteByGrupo_IdGrupo(10L);
         verify(grupoRepo).findById(10L);
         verify(grupoRepo).delete(grupo);
     }
@@ -209,6 +211,7 @@ class ServiceGrupoTest {
         assertDoesNotThrow(() -> service.salirDeGrupo(1L, 10L));
 
         verify(votoRepo).deleteByEncuesta_Grupo_IdGrupo(10L);
+        verify(itinerarioGrupoRepo).deleteByGrupo_IdGrupo(10L);
         verify(grupoRepo).delete(grupo);
         assertNull(encuesta.getOpcionGanadora());
     }
