@@ -162,6 +162,7 @@ class ServiceItinerarioGrupoTest {
         Grupo grupo = grupo(10L, lider);
         ItinerarioGrupo itinerario = itinerario(grupo, lider);
         ItemItinerarioGrupo item = item(50L, itinerario, otro, EstadoItemItinerarioGrupo.PROPUESTO);
+        itinerario.getItems().add(item);
 
         when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 1L))
                 .thenReturn(Optional.of(miembro(grupo, lider, RolGrupo.CREADOR)));
@@ -172,7 +173,9 @@ class ServiceItinerarioGrupoTest {
 
         service.eliminarItem(1L, 10L, 50L);
 
-        verify(itemRepo).delete(item);
+        // El item se quita de la colección (orphanRemoval lo borra) y se persiste.
+        assertTrue(itinerario.getItems().isEmpty());
+        verify(itinerarioGrupoRepo).save(itinerario);
     }
 
     /* ---------------- asistencia ---------------- */

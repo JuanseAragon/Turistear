@@ -24,9 +24,11 @@ public record ItinerarioGrupoDTO(
         Long creadorOriginalId,
         String nombreCreadorOriginal,
         Long idEncuestaOrigen,
+        /** ¿El usuario que consulta es el líder actual del grupo? (para habilitar confirmar/editar). */
+        boolean soyCreador,
         List<ItemItinerarioGrupoDTO> items
 ) {
-    public static ItinerarioGrupoDTO from(ItinerarioGrupo it, List<ItemItinerarioGrupoDTO> items) {
+    public static ItinerarioGrupoDTO from(ItinerarioGrupo it, List<ItemItinerarioGrupoDTO> items, boolean soyCreador) {
         if (it == null) return null;
         return new ItinerarioGrupoDTO(
                 it.getIdItinerarioGrupo(),
@@ -40,6 +42,7 @@ public record ItinerarioGrupoDTO(
                 it.getCreador().getIdUsuario(),
                 it.getCreador().getNombre(),
                 it.getEncuestaOrigen() != null ? it.getEncuestaOrigen().getIdEncuesta() : null,
+                soyCreador,
                 items
         );
     }

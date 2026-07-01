@@ -49,9 +49,10 @@ public class ServiceItinerarioGrupo {
 
     @Transactional(readOnly = true)
     public ItinerarioGrupoDTO obtenerDetalle(Long idUsuario, Long idGrupo) {
-        verificarMiembro(idGrupo, idUsuario);
+        MiembroGrupo miembro = verificarMiembro(idGrupo, idUsuario);
         ItinerarioGrupo itinerario = obtenerVigente(idGrupo);
-        return armarDetalle(itinerario, idGrupo, idUsuario);
+        boolean soyCreador = miembro.getRol() == RolGrupo.CREADOR;
+        return armarDetalle(itinerario, idGrupo, idUsuario, soyCreador);
     }
 
     /* ---------------------------------------------------------------- *
@@ -163,7 +164,12 @@ public class ServiceItinerarioGrupo {
             }
         }
 
-        itemRepo.delete(item);
+        // Se quita de la colección administrada (cargada por el EntityGraph de
+        // obtenerVigente) para que orphanRemoval=true borre el item y sus
+        // asistencias en cascada. Hacer itemRepo.delete() dejando el item en la
+        // colección lanzaba ObjectDeletedException al hacer flush.
+        itinerario.getItems().removeIf(i -> i.getId().equals(idItem));
+        itinerarioGrupoRepo.save(itinerario);
     }
 
     /* ---------------------------------------------------------------- *
@@ -211,15 +217,22 @@ public class ServiceItinerarioGrupo {
                 .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada en este itinerario: " + idItem));
     }
 
-    private ItinerarioGrupoDTO armarDetalle(ItinerarioGrupo itinerario, Long idGrupo, Long idUsuario) {
-        List<Usuario> roster = miembroRepo.findByGrupo_IdGrupo(idGrupo).stream()
-                .map(MiembroGrupo::getUsuario)
-                .toList();
+    private ItinerarioGrupoDTO armarDetalle(ItinerarioGrupo itinerario, Long idGrupo, Long idUsuario,
+                                            boolean soyCreador) {
+        // La asistencia solo aplica a items CONFIRMADO. Si no hay ninguno, nos
+        // ahorramos las dos queries extra (roster + asistencias) en cada poll.
+        boolean hayConfirmados = itinerario.getItems().stream()
+                .anyMatch(i -> i.getEstado() == EstadoItemItinerarioGrupo.CONFIRMADO);
+
+        List<Usuario> roster = hayConfirmados
+                ? miembroRepo.findByGrupo_IdGrupo(idGrupo).stream().map(MiembroGrupo::getUsuario).toList()
+                : List.of();
 
         // 1 sola query para todas las asistencias del itinerario; se agrupan por item.
-        Map<Long, List<AsistenciaItemGrupo>> asistenciasPorItem = asistenciaRepo
-                .findByItem_ItinerarioGrupo_IdItinerarioGrupo(itinerario.getIdItinerarioGrupo()).stream()
-                .collect(Collectors.groupingBy(a -> a.getItem().getId()));
+        Map<Long, List<AsistenciaItemGrupo>> asistenciasPorItem = hayConfirmados
+                ? asistenciaRepo.findByItem_ItinerarioGrupo_IdItinerarioGrupo(itinerario.getIdItinerarioGrupo())
+                        .stream().collect(Collectors.groupingBy(a -> a.getItem().getId()))
+                : Map.of();
 
         List<ItemItinerarioGrupoDTO> items = itinerario.getItems().stream()
                 .map(item -> ItemItinerarioGrupoDTO.from(
@@ -227,7 +240,7 @@ public class ServiceItinerarioGrupo {
                         asistenciasPorItem.getOrDefault(item.getId(), List.of())))
                 .toList();
 
-        return ItinerarioGrupoDTO.from(itinerario, items);
+        return ItinerarioGrupoDTO.from(itinerario, items, soyCreador);
     }
 
     /** Arma el DTO de un único item (recarga roster + asistencias de ese item). */
