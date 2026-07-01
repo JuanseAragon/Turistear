@@ -33,4 +33,11 @@ public interface ItinerarioGrupoRepository extends JpaRepository<ItinerarioGrupo
 
     /** Idempotencia: evita crear dos itinerarios de grupo para la misma encuesta. */
     boolean existsByEncuestaOrigen_IdEncuesta(Long idEncuesta);
+
+    /**
+     * Borra los itinerarios de grupo (y en cascada sus items/asistencias) de un
+     * grupo. Se llama al eliminar el grupo, antes de borrar sus encuestas, para
+     * no dejar itinerarios apuntando a encuestas que están por eliminarse.
+     */
+    void deleteByGrupo_IdGrupo(Long idGrupo);
 }

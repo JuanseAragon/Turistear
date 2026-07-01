@@ -40,6 +40,7 @@ public class ServiceGrupo {
     private final OpcionEncuestaRepository opcionRepo;
     private final VotoRepository votoRepo;
     private final UsuarioRepository usuarioRepo;
+    private final ItinerarioGrupoRepository itinerarioGrupoRepo;
 
     /* ---------------------------------------------------------------- *
      *  POST /grupos
@@ -285,6 +286,11 @@ public class ServiceGrupo {
     private void eliminarGrupoYRelacionados(Long idGrupo) {
         // Voto no está en ninguna cascada del grupo, se borra en bulk.
         votoRepo.deleteByEncuesta_Grupo_IdGrupo(idGrupo);
+
+        // El itinerario compartido referencia encuestas (encuesta_origen_id): lo
+        // borramos ANTES que las encuestas para no dejar referencias colgadas.
+        // Cascada de la entidad limpia sus items y asistencias.
+        itinerarioGrupoRepo.deleteByGrupo_IdGrupo(idGrupo);
 
         Grupo grupo = buscarGrupo(idGrupo);
 

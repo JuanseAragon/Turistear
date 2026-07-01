@@ -7,6 +7,7 @@ import turistear.turistear_backend.dto.favoritos.ItinerarioUsuarioDTO;
 import turistear.turistear_backend.dto.grupo.*;
 import turistear.turistear_backend.dto.sistema.ItinerarioSistemaDTO;
 import turistear.turistear_backend.enumerable.EstadoEncuesta;
+import turistear.turistear_backend.enumerable.EstadoItemItinerarioGrupo;
 import turistear.turistear_backend.enumerable.RolGrupo;
 import turistear.turistear_backend.exception.BadRequestException;
 import turistear.turistear_backend.exception.ConflictException;
@@ -41,6 +42,7 @@ public class ServiceEncuesta {
     private final ItinerarioSistemaRepository sistemaRepo;
     private final ItinerarioUsuarioRepository itinerarioUsuarioRepo;
     private final FavoritoRepository favoritoRepo;
+    private final ItinerarioGrupoRepository itinerarioGrupoRepo;
     private final ServiceItinerariosUsuario serviceItinerariosUsuario;
 
     /* ---------------------------------------------------------------- *
@@ -211,6 +213,9 @@ public class ServiceEncuesta {
         encuesta.setFechaCierre(LocalDateTime.now());
         encuestaRepo.save(encuesta);
 
+        // El ganador pasa a ser el itinerario compartido del grupo.
+        crearItinerarioGrupoDesdeOpcionGanadora(encuesta, ganadora);
+
         return new ResultadoEncuestaDTO(
                 OpcionEncuestaDTO.from(ganadora, EstadoEncuesta.FINALIZADA, maximo, true),
                 false,
@@ -238,6 +243,9 @@ public class ServiceEncuesta {
         encuesta.setOpcionGanadora(ganadora);
         encuesta.setFechaCierre(LocalDateTime.now());
         encuestaRepo.save(encuesta);
+
+        // El ganador (desempatado) pasa a ser el itinerario compartido del grupo.
+        crearItinerarioGrupoDesdeOpcionGanadora(encuesta, ganadora);
 
         long votos = votoRepo.countByOpcion_Id(ganadora.getId());
         return new ResultadoEncuestaDTO(
@@ -451,6 +459,98 @@ public class ServiceEncuesta {
         }
 
         return ItinerarioUsuarioDTO.from(itinerarioUsuarioRepo.save(copia));
+    }
+
+    /* ---------------------------------------------------------------- *
+     *  Creación automática del itinerario compartido de grupo
+     * ---------------------------------------------------------------- */
+
+    /**
+     * Al resolverse una ganadora (finalizar o desempatar), el itinerario
+     * ganador se clona como un {@link ItinerarioGrupo} propiedad del grupo —
+     * NO como copias individuales por miembro. Snapshot independiente del
+     * origen (mismo patrón que {@code ServiceItinerariosUsuario.crearDesdeFavorito}),
+     * con todos sus items ya CONFIRMADO.
+     *
+     * <p>Idempotente: si ya existe un itinerario de grupo para esta encuesta
+     * (por un reintento), no crea otro. La copia individual histórica
+     * ({@link #copiarGanador}) queda intacta y disponible aparte.
+     */
+    private void crearItinerarioGrupoDesdeOpcionGanadora(Encuesta encuesta, OpcionEncuesta ganadora) {
+        if (itinerarioGrupoRepo.existsByEncuestaOrigen_IdEncuesta(encuesta.getIdEncuesta())) {
+            return;
+        }
+
+        Grupo grupo = encuesta.getGrupo();
+        Usuario creadorGrupo = grupo.getCreador();
+
+        ItinerarioGrupo nuevo = ItinerarioGrupo.builder()
+                .grupo(grupo)
+                .creador(creadorGrupo)
+                .encuestaOrigen(encuesta)
+                .fechaCreacion(LocalDateTime.now())
+                .build();
+
+        if (ganadora.getIdItinerarioSistema() != null) {
+            ItinerarioSistema sistema = sistemaRepo.findDetalleById(ganadora.getIdItinerarioSistema())
+                    .orElseThrow(() -> new ResourceNotFoundException("Itinerario del sistema no encontrado"));
+            copiarCabecera(nuevo, sistema.getTitulo(), sistema.getDescripcion(), sistema.getProvincia(),
+                    sistema.getFechaInicio(), sistema.getFechaFin(), sistema.getFotoPortada(), sistema.getDuracionDias());
+            for (ItemItinerarioSistema itemSistema : sistema.getItems()) {
+                Actividad act = itemSistema.getActividad();
+                nuevo.getItems().add(nuevoItemConfirmado(nuevo, creadorGrupo,
+                        act.getNombre(), act.getDescripcion(), act.getLocalidad(), act.getDireccion(),
+                        itemSistema.getDia(), itemSistema.getHora()));
+            }
+            itinerarioGrupoRepo.save(nuevo);
+            return;
+        }
+
+        if (ganadora.getIdItinerarioUsuario() != null) {
+            ItinerarioUsuario origen = itinerarioUsuarioRepo.findByIdItinerarioUsuarioConItems(ganadora.getIdItinerarioUsuario())
+                    .orElseThrow(() -> new ResourceNotFoundException("Itinerario de usuario no encontrado"));
+            copiarCabecera(nuevo, origen.getTitulo(), origen.getDescripcion(), origen.getProvincia(),
+                    origen.getFechaInicio(), origen.getFechaFin(), origen.getFotoPortada(), origen.getDuracionDias());
+            for (ItemItinerarioUsuario item : origen.getItems()) {
+                nuevo.getItems().add(nuevoItemConfirmado(nuevo, creadorGrupo,
+                        item.getNombreActividad(), item.getDescripcion(), item.getLocalidad(), item.getDireccion(),
+                        item.getDia(), item.getHora()));
+            }
+            itinerarioGrupoRepo.save(nuevo);
+            return;
+        }
+
+        throw new BadRequestException("La opción ganadora no tiene un itinerario asociado");
+    }
+
+    private void copiarCabecera(ItinerarioGrupo destino, String titulo, String descripcion,
+                                turistear.turistear_backend.enumerable.Provincia provincia,
+                                java.time.LocalDate fechaInicio, java.time.LocalDate fechaFin,
+                                String fotoPortada, Integer duracionDias) {
+        destino.setTitulo(titulo);
+        destino.setDescripcion(descripcion);
+        destino.setProvincia(provincia);
+        destino.setFechaInicio(fechaInicio);
+        destino.setFechaFin(fechaFin);
+        destino.setFotoPortada(fotoPortada);
+        destino.setDuracionDias(duracionDias);
+    }
+
+    private ItemItinerarioGrupo nuevoItemConfirmado(ItinerarioGrupo itinerario, Usuario propuestoPor,
+                                                    String nombre, String descripcion, String localidad,
+                                                    String direccion, Integer dia, java.time.LocalTime hora) {
+        return ItemItinerarioGrupo.builder()
+                .itinerarioGrupo(itinerario)
+                .nombreActividad(nombre)
+                .descripcion(descripcion)
+                .localidad(localidad)
+                .direccion(direccion)
+                .dia(dia)
+                .hora(hora)
+                .estado(EstadoItemItinerarioGrupo.CONFIRMADO)
+                .propuestoPor(propuestoPor)
+                .fechaCreacion(LocalDateTime.now())
+                .build();
     }
 
     /* ---------------------------------------------------------------- *
