@@ -44,6 +44,15 @@ public class RefreshToken {
     @Column(nullable = false)
     private boolean revoked = false;
 
+    /**
+     * Token que reemplazó a éste al rotar. {@code null} mientras el token está
+     * vigente o si fue revocado sin rotación (logout / cambio de contraseña).
+     * Permite que un refresh concurrente reciba el mismo token hijo en lugar de
+     * un 401 (ver {@code RefreshTokenService.validarYRotar}).
+     */
+    @Column(name = "token_reemplazo", length = 36)
+    private String tokenReemplazo;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
