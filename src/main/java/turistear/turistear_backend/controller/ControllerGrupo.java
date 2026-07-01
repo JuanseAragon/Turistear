@@ -18,6 +18,7 @@ import turistear.turistear_backend.dto.grupo.*;
 import turistear.turistear_backend.security.AuthUtils;
 import turistear.turistear_backend.service.ServiceEncuesta;
 import turistear.turistear_backend.service.ServiceGrupo;
+import turistear.turistear_backend.service.ServiceItinerarioGrupo;
 
 import java.util.List;
 
@@ -33,6 +34,7 @@ public class ControllerGrupo {
 
     private final ServiceGrupo serviceGrupo;
     private final ServiceEncuesta serviceEncuesta;
+    private final ServiceItinerarioGrupo serviceItinerarioGrupo;
     private final AuthUtils authUtils;
 
     /* ---------------- grupos ---------------- */
@@ -298,5 +300,114 @@ public class ControllerGrupo {
             Authentication authentication) {
         Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
         return ResponseEntity.ok(serviceEncuesta.obtenerDetalleOpcion(idUsuario, idEncuesta, idOpcion));
+    }
+
+    /* ---------------- itinerario compartido de grupo ---------------- */
+
+    @GetMapping("/{idGrupo}/itinerario")
+    @Operation(summary = "Ver el itinerario compartido del grupo (el del último ganador)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Itinerario obtenido"),
+            @ApiResponse(responseCode = "404", description = "El grupo todavía no tiene itinerario compartido",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<ItinerarioGrupoDTO> obtenerItinerario(
+            @PathVariable Long idGrupo,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return ResponseEntity.ok(serviceItinerarioGrupo.obtenerDetalle(idUsuario, idGrupo));
+    }
+
+    @PostMapping("/{idGrupo}/itinerario/items")
+    @Operation(summary = "Proponer una actividad (confirmada si la agrega el líder, propuesta si no)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Actividad agregada"),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Grupo o itinerario no encontrado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<ItemItinerarioGrupoDTO> proponerItem(
+            @PathVariable Long idGrupo,
+            @Valid @RequestBody ItemItinerarioGrupoRequest request,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(serviceItinerarioGrupo.proponerItem(idUsuario, idGrupo, request));
+    }
+
+    @PutMapping("/{idGrupo}/itinerario/items/{idItem}")
+    @Operation(summary = "Editar una actividad (líder si está confirmada; el proponente si sigue propuesta)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Actividad actualizada"),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "No podés editar esta actividad",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Actividad no encontrada",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ItemItinerarioGrupoDTO actualizarItem(
+            @PathVariable Long idGrupo,
+            @PathVariable Long idItem,
+            @Valid @RequestBody ItemItinerarioGrupoRequest request,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return serviceItinerarioGrupo.actualizarItem(idUsuario, idGrupo, idItem, request);
+    }
+
+    @PatchMapping("/{idGrupo}/itinerario/items/{idItem}/confirmar")
+    @Operation(summary = "Confirmar una actividad propuesta (solo el líder)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Actividad confirmada"),
+            @ApiResponse(responseCode = "400", description = "La actividad ya estaba confirmada",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Solo el líder puede confirmar",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Actividad no encontrada",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ItemItinerarioGrupoDTO confirmarItem(
+            @PathVariable Long idGrupo,
+            @PathVariable Long idItem,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return serviceItinerarioGrupo.confirmarItem(idUsuario, idGrupo, idItem);
+    }
+
+    @DeleteMapping("/{idGrupo}/itinerario/items/{idItem}")
+    @Operation(summary = "Eliminar/rechazar una actividad (líder cualquiera; miembro solo su propia propuesta)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Actividad eliminada"),
+            @ApiResponse(responseCode = "403", description = "No podés eliminar esta actividad",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Actividad no encontrada",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<Void> eliminarItem(
+            @PathVariable Long idGrupo,
+            @PathVariable Long idItem,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        serviceItinerarioGrupo.eliminarItem(idUsuario, idGrupo, idItem);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{idGrupo}/itinerario/items/{idItem}/asistencia")
+    @Operation(summary = "Marcar si voy / no voy a una actividad (solo si está confirmada)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Asistencia registrada"),
+            @ApiResponse(responseCode = "400", description = "La actividad todavía no está confirmada",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Actividad no encontrada",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ItemItinerarioGrupoDTO togglearAsistencia(
+            @PathVariable Long idGrupo,
+            @PathVariable Long idItem,
+            @Valid @RequestBody AsistenciaRequest request,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return serviceItinerarioGrupo.togglearAsistencia(idUsuario, idGrupo, idItem, request.asiste());
     }
 }
