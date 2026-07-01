@@ -27,6 +27,14 @@ public class RefreshTokenService {
     @Value("${jwt.refresh-expiration}")
     private long refreshExpirationMs;
 
+    /**
+     * Ventana durante la cual un refresh token recién rotado sigue aceptando el
+     * token viejo. Absorbe refreshes concurrentes / reintentos: en vez de tirar
+     * 401 devolvemos el token hijo que ya se emitió.
+     */
+    @Value("${jwt.refresh-grace-period}")
+    private long ventanaGraciaRotacionMs;
+
     /** Crea y persiste un refresh token nuevo (UUID opaco) para el usuario. */
     @Transactional
     public RefreshToken crear(Usuario usuario) {
@@ -43,21 +51,47 @@ public class RefreshTokenService {
 
     /**
      * Valida el refresh token recibido y lo rota: revoca el viejo y devuelve uno
-     * nuevo. Lanza {@link UnauthorizedException} si no existe, está revocado o venció.
+     * nuevo. Es idempotente ante refreshes concurrentes: si el token ya fue rotado
+     * hace muy poco (dentro de la ventana de gracia), devuelve el mismo token hijo
+     * en lugar de fallar. Lanza {@link UnauthorizedException} si no existe, venció,
+     * o fue revocado por logout / fuera de la ventana de gracia.
      */
     @Transactional
-    public RefreshToken validarYRotar(String token) {
-        RefreshToken actual = refreshTokenRepository.findByTokenWithUsuario(token)
+    public RefreshToken validarYRotar(String tokenPresentado) {
+        RefreshToken tokenActual = refreshTokenRepository.findByTokenWithUsuario(tokenPresentado)
                 .orElseThrow(() -> new UnauthorizedException("Refresh token inválido"));
 
-        if (!actual.isValido()) {
-            throw new UnauthorizedException("Refresh token expirado o revocado");
+        // Caso normal: el token está vigente -> lo rotamos.
+        if (tokenActual.isValido()) {
+            RefreshToken tokenNuevo = crear(tokenActual.getUsuario());
+            tokenActual.setRevoked(true);
+            tokenActual.setTokenReemplazo(tokenNuevo.getToken());
+            refreshTokenRepository.save(tokenActual);
+            return tokenNuevo;
         }
 
-        actual.setRevoked(true);
-        refreshTokenRepository.save(actual);
+        // Caso concurrencia/reintento: ya fue rotado hace muy poco -> devolvemos el mismo hijo.
+        RefreshToken reemplazo = reemplazoDentroDeGracia(tokenActual);
+        if (reemplazo != null) {
+            return reemplazo;
+        }
 
-        return crear(actual.getUsuario());
+        throw new UnauthorizedException("Refresh token expirado o revocado");
+    }
+
+    /**
+     * Si {@code tokenViejo} fue rotado dentro de la ventana de gracia y su token
+     * hijo sigue vigente, lo devuelve; en cualquier otro caso devuelve {@code null}
+     * (revocado por logout, vencido, o rotado hace demasiado tiempo).
+     */
+    private RefreshToken reemplazoDentroDeGracia(RefreshToken tokenViejo) {
+        if (tokenViejo.getTokenReemplazo() == null) {
+            return null;
+        }
+        return refreshTokenRepository.findByTokenWithUsuario(tokenViejo.getTokenReemplazo())
+                .filter(RefreshToken::isValido)
+                .filter(hijo -> hijo.getCreatedAt().plusMillis(ventanaGraciaRotacionMs).isAfter(Instant.now()))
+                .orElse(null);
     }
 
     /** Revoca un refresh token puntual (logout). Tolerante: si no existe, no hace nada. */
