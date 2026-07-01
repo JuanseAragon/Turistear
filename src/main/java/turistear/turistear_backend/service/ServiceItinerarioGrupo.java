@@ -3,6 +3,7 @@ package turistear.turistear_backend.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import turistear.turistear_backend.dto.grupo.ActualizarFechaItinerarioGrupoRequest;
 import turistear.turistear_backend.dto.grupo.ItemItinerarioGrupoDTO;
 import turistear.turistear_backend.dto.grupo.ItemItinerarioGrupoRequest;
 import turistear.turistear_backend.dto.grupo.ItinerarioGrupoDTO;
@@ -53,6 +54,28 @@ public class ServiceItinerarioGrupo {
         ItinerarioGrupo itinerario = obtenerVigente(idGrupo);
         boolean soyCreador = miembro.getRol() == RolGrupo.CREADOR;
         return armarDetalle(itinerario, idGrupo, idUsuario, soyCreador);
+    }
+
+    /* ---------------------------------------------------------------- *
+     *  PATCH /grupos/{idGrupo}/itinerario/fecha-inicio
+     * ---------------------------------------------------------------- */
+
+    @Transactional
+    public ItinerarioGrupoDTO actualizarFechaInicio(Long idUsuario, Long idGrupo,
+                                                    ActualizarFechaItinerarioGrupoRequest request) {
+        verificarCreador(idGrupo, idUsuario);
+        ItinerarioGrupo itinerario = obtenerVigente(idGrupo);
+
+        if (request.fechaInicio() == null) {
+            throw new BadRequestException("La fecha de inicio es obligatoria");
+        }
+
+        int duracion = itinerario.getDuracionDias() == null ? 1 : itinerario.getDuracionDias();
+        itinerario.setFechaInicio(request.fechaInicio());
+        itinerario.setFechaFin(request.fechaInicio().plusDays(duracion - 1L));
+        itinerarioGrupoRepo.save(itinerario);
+
+        return armarDetalle(itinerario, idGrupo, idUsuario, true);
     }
 
     /* ---------------------------------------------------------------- *

@@ -207,6 +207,24 @@ public class ServiceGrupo {
     }
 
     /* ---------------------------------------------------------------- *
+     *  DELETE /grupos/{id}/miembros/{idMiembro}
+     * ---------------------------------------------------------------- */
+
+    @Transactional
+    public void eliminarMiembro(Long idUsuario, Long idGrupo, Long idMiembro) {
+        verificarCreador(idGrupo, idUsuario);
+
+        if (idUsuario.equals(idMiembro)) {
+            throw new BadRequestException("No podés eliminarte a vos mismo como creador. Para salir, usá 'Abandonar grupo'.");
+        }
+
+        MiembroGrupo miembro = miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(idGrupo, idMiembro)
+                .orElseThrow(() -> new ResourceNotFoundException("El usuario no es miembro de este grupo"));
+
+        miembroRepo.delete(miembro);
+    }
+
+    /* ---------------------------------------------------------------- *
      *  POST /grupos/{id}/codigo
      * ---------------------------------------------------------------- */
 

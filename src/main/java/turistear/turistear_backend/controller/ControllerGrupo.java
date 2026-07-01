@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import turistear.turistear_backend.dto.common.ErrorResponse;
 import turistear.turistear_backend.dto.favoritos.ItinerarioUsuarioDTO;
 import turistear.turistear_backend.dto.grupo.*;
+
 import turistear.turistear_backend.security.AuthUtils;
 import turistear.turistear_backend.service.ServiceEncuesta;
 import turistear.turistear_backend.service.ServiceGrupo;
@@ -124,6 +125,26 @@ public class ControllerGrupo {
             Authentication authentication) {
         Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
         serviceGrupo.salirDeGrupo(idUsuario, id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}/miembros/{idMiembro}")
+    @Operation(summary = "Eliminar un miembro del grupo (solo creador)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Miembro eliminado"),
+            @ApiResponse(responseCode = "400", description = "No podés eliminarte a vos mismo",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "No es creador",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Miembro no encontrado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<Void> eliminarMiembro(
+            @PathVariable Long id,
+            @PathVariable Long idMiembro,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        serviceGrupo.eliminarMiembro(idUsuario, id, idMiembro);
         return ResponseEntity.noContent().build();
     }
 
@@ -303,6 +324,25 @@ public class ControllerGrupo {
     }
 
     /* ---------------- itinerario compartido de grupo ---------------- */
+
+    @PatchMapping("/{idGrupo}/itinerario/fecha-inicio")
+    @Operation(summary = "Cambiar la fecha de inicio del itinerario (solo creador)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Fecha actualizada"),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "No es creador",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Itinerario no encontrado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<ItinerarioGrupoDTO> actualizarFechaItinerario(
+            @PathVariable Long idGrupo,
+            @Valid @RequestBody ActualizarFechaItinerarioGrupoRequest request,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return ResponseEntity.ok(serviceItinerarioGrupo.actualizarFechaInicio(idUsuario, idGrupo, request));
+    }
 
     @GetMapping("/{idGrupo}/itinerario")
     @Operation(summary = "Ver el itinerario compartido del grupo (el del último ganador)")

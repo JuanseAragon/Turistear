@@ -6,6 +6,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import turistear.turistear_backend.dto.grupo.ActualizarFechaItinerarioGrupoRequest;
+import turistear.turistear_backend.dto.grupo.ItinerarioGrupoDTO;
 import turistear.turistear_backend.dto.grupo.ItemItinerarioGrupoDTO;
 import turistear.turistear_backend.dto.grupo.ItemItinerarioGrupoRequest;
 import turistear.turistear_backend.enumerable.EstadoItemItinerarioGrupo;
@@ -74,6 +76,45 @@ class ServiceItinerarioGrupoTest {
 
         assertEquals(EstadoItemItinerarioGrupo.PROPUESTO, dto.estado());
         assertEquals(2L, dto.propuestoPorId());
+    }
+
+    /* ---------------- actualizar fecha inicio ---------------- */
+
+    @Test
+    void actualizarFechaInicio_creadorCambiaFechaYRecalculaFin() {
+        Usuario lider = usuario(1L, "Ana");
+        Grupo grupo = grupo(10L, lider);
+        ItinerarioGrupo itinerario = itinerario(grupo, lider);
+        LocalDate nuevaFecha = LocalDate.now().plusDays(5);
+
+        when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 1L))
+                .thenReturn(Optional.of(miembro(grupo, lider, RolGrupo.CREADOR)));
+        when(itinerarioGrupoRepo.findByGrupo_IdGrupoOrderByFechaCreacionDesc(10L))
+                .thenReturn(List.of(itinerario));
+        when(itinerarioGrupoRepo.save(itinerario)).thenReturn(itinerario);
+
+        ItinerarioGrupoDTO dto = service.actualizarFechaInicio(1L, 10L,
+                new ActualizarFechaItinerarioGrupoRequest(nuevaFecha));
+
+        assertEquals(nuevaFecha, dto.fechaInicio());
+        assertEquals(nuevaFecha.plusDays(2), dto.fechaFin());
+        assertEquals(3, dto.duracionDias());
+        verify(itinerarioGrupoRepo).save(itinerario);
+    }
+
+    @Test
+    void actualizarFechaInicio_noCreadorLanzaForbidden() {
+        Usuario lider = usuario(1L, "Ana");
+        Usuario miembro = usuario(2L, "Luis");
+        Grupo grupo = grupo(10L, lider);
+
+        when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 2L))
+                .thenReturn(Optional.of(miembro(grupo, miembro, RolGrupo.MIEMBRO)));
+
+        assertThrows(ForbiddenException.class,
+                () -> service.actualizarFechaInicio(2L, 10L,
+                        new ActualizarFechaItinerarioGrupoRequest(LocalDate.now())));
+        verify(itinerarioGrupoRepo, never()).save(any());
     }
 
     /* ---------------- confirmar ---------------- */

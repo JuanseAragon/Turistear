@@ -11,6 +11,7 @@ import turistear.turistear_backend.dto.grupo.CodigoInvitacionDTO;
 import turistear.turistear_backend.dto.grupo.CrearGrupoRequest;
 import turistear.turistear_backend.dto.grupo.GrupoDTO;
 import turistear.turistear_backend.enumerable.RolGrupo;
+import turistear.turistear_backend.exception.BadRequestException;
 import turistear.turistear_backend.exception.ForbiddenException;
 import turistear.turistear_backend.exception.ResourceNotFoundException;
 import turistear.turistear_backend.model.*;
@@ -258,6 +259,63 @@ class ServiceGrupoTest {
         assertThrows(ForbiddenException.class, () -> service.actualizarGrupo(2L, 10L,
                 new ActualizarGrupoRequest("Nuevo nombre", null, null)));
         verify(grupoRepo, never()).save(any());
+    }
+
+    @Test
+    void eliminarMiembro_creadorEliminaAOtroMiembro() {
+        Usuario creador = usuario(1L, "Ana");
+        Usuario miembro = usuario(2L, "Luis");
+        Grupo grupo = grupo(10L, creador);
+        MiembroGrupo creadorMiembro = MiembroGrupo.builder()
+                .id(1L).grupo(grupo).usuario(creador)
+                .rol(RolGrupo.CREADOR).fechaUnion(LocalDateTime.now())
+                .build();
+        MiembroGrupo miembroMiembro = MiembroGrupo.builder()
+                .id(2L).grupo(grupo).usuario(miembro)
+                .rol(RolGrupo.MIEMBRO).fechaUnion(LocalDateTime.now())
+                .build();
+
+        when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 1L))
+                .thenReturn(Optional.of(creadorMiembro));
+        when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 2L))
+                .thenReturn(Optional.of(miembroMiembro));
+
+        service.eliminarMiembro(1L, 10L, 2L);
+
+        verify(miembroRepo).delete(miembroMiembro);
+    }
+
+    @Test
+    void eliminarMiembro_noCreadorLanzaForbidden() {
+        Usuario creador = usuario(1L, "Ana");
+        Usuario noCreador = usuario(2L, "Luis");
+        Grupo grupo = grupo(10L, creador);
+        MiembroGrupo miembro = MiembroGrupo.builder()
+                .id(2L).grupo(grupo).usuario(noCreador)
+                .rol(RolGrupo.MIEMBRO).fechaUnion(LocalDateTime.now())
+                .build();
+
+        when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 2L))
+                .thenReturn(Optional.of(miembro));
+
+        assertThrows(ForbiddenException.class, () -> service.eliminarMiembro(2L, 10L, 1L));
+        verify(miembroRepo, never()).delete(any());
+    }
+
+    @Test
+    void eliminarMiembro_creadorNoPuedeEliminarseASiMismo() {
+        Usuario creador = usuario(1L, "Ana");
+        Grupo grupo = grupo(10L, creador);
+        MiembroGrupo creadorMiembro = MiembroGrupo.builder()
+                .id(1L).grupo(grupo).usuario(creador)
+                .rol(RolGrupo.CREADOR).fechaUnion(LocalDateTime.now())
+                .build();
+
+        when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 1L))
+                .thenReturn(Optional.of(creadorMiembro));
+
+        assertThrows(BadRequestException.class, () -> service.eliminarMiembro(1L, 10L, 1L));
+        verify(miembroRepo, never()).delete(any());
     }
 
     @Test
