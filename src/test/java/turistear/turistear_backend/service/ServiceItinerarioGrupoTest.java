@@ -15,6 +15,7 @@ import turistear.turistear_backend.enumerable.Provincia;
 import turistear.turistear_backend.enumerable.RolGrupo;
 import turistear.turistear_backend.exception.BadRequestException;
 import turistear.turistear_backend.exception.ForbiddenException;
+import turistear.turistear_backend.exception.ResourceNotFoundException;
 import turistear.turistear_backend.model.*;
 import turistear.turistear_backend.repository.AsistenciaItemGrupoRepository;
 import turistear.turistear_backend.repository.ItemItinerarioGrupoRepository;
@@ -233,7 +234,7 @@ class ServiceItinerarioGrupoTest {
                 .thenReturn(Optional.of(miembro(grupo, miembro, RolGrupo.MIEMBRO)));
         when(itinerarioGrupoRepo.findByGrupo_IdGrupoOrderByFechaCreacionDesc(10L))
                 .thenReturn(List.of(itinerario));
-        when(itemRepo.findByIdAndItinerarioGrupo_IdItinerarioGrupo(50L, 99L))
+        when(itemRepo.findLockedByIdAndItinerarioGrupo_IdItinerarioGrupo(50L, 99L))
                 .thenReturn(Optional.of(item));
         when(asistenciaRepo.findByItem_IdAndUsuario_IdUsuario(50L, 2L)).thenReturn(Optional.empty());
 
@@ -243,6 +244,34 @@ class ServiceItinerarioGrupoTest {
         verify(asistenciaRepo).save(captor.capture());
         assertTrue(captor.getValue().isAsiste());
         assertEquals(2L, captor.getValue().getUsuario().getIdUsuario());
+    }
+
+    @Test
+    void eliminarPropuestaPorLider_yLuegoProposerIntentaEditar_lanzaNotFound() {
+        Usuario lider = usuario(1L, "Ana");
+        Usuario miembro = usuario(2L, "Luis");
+        Grupo grupo = grupo(10L, lider);
+        ItinerarioGrupo itinerario = itinerario(grupo, lider);
+        ItemItinerarioGrupo item = item(50L, itinerario, miembro, EstadoItemItinerarioGrupo.PROPUESTO);
+        itinerario.getItems().add(item);
+
+        when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 1L))
+                .thenReturn(Optional.of(miembro(grupo, lider, RolGrupo.CREADOR)));
+        when(itinerarioGrupoRepo.findByGrupo_IdGrupoOrderByFechaCreacionDesc(10L))
+                .thenReturn(List.of(itinerario));
+        when(itemRepo.findByIdAndItinerarioGrupo_IdItinerarioGrupo(50L, 99L))
+                .thenReturn(Optional.of(item))
+                .thenReturn(Optional.empty());
+
+        service.eliminarItem(1L, 10L, 50L);
+
+        assertTrue(itinerario.getItems().isEmpty());
+
+        when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 2L))
+                .thenReturn(Optional.of(miembro(grupo, miembro, RolGrupo.MIEMBRO)));
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> service.actualizarItem(2L, 10L, 50L, req("Editada", 1)));
     }
 
     @Test
@@ -257,11 +286,111 @@ class ServiceItinerarioGrupoTest {
                 .thenReturn(Optional.of(miembro(grupo, miembro, RolGrupo.MIEMBRO)));
         when(itinerarioGrupoRepo.findByGrupo_IdGrupoOrderByFechaCreacionDesc(10L))
                 .thenReturn(List.of(itinerario));
-        when(itemRepo.findByIdAndItinerarioGrupo_IdItinerarioGrupo(50L, 99L))
+        when(itemRepo.findLockedByIdAndItinerarioGrupo_IdItinerarioGrupo(50L, 99L))
                 .thenReturn(Optional.of(item));
 
         assertThrows(BadRequestException.class, () -> service.togglearAsistencia(2L, 10L, 50L, true));
         verify(asistenciaRepo, never()).save(any());
+    }
+
+    /* ---------------- eliminar día ---------------- */
+
+    @Test
+    void eliminarDiaMedio_borraActividadesYRenumerayAcortaDuracion() {
+        Usuario lider = usuario(1L, "Ana");
+        Grupo grupo = grupo(10L, lider);
+        ItinerarioGrupo itinerario = itinerario(grupo, lider);
+        ItemItinerarioGrupo itemDia1 = itemConDia(50L, itinerario, lider, EstadoItemItinerarioGrupo.CONFIRMADO, 1);
+        ItemItinerarioGrupo itemDia2 = itemConDia(51L, itinerario, lider, EstadoItemItinerarioGrupo.CONFIRMADO, 2);
+        ItemItinerarioGrupo itemDia3 = itemConDia(52L, itinerario, lider, EstadoItemItinerarioGrupo.CONFIRMADO, 3);
+        itinerario.getItems().addAll(List.of(itemDia1, itemDia2, itemDia3));
+
+        when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 1L))
+                .thenReturn(Optional.of(miembro(grupo, lider, RolGrupo.CREADOR)));
+        when(itinerarioGrupoRepo.findByGrupo_IdGrupoOrderByFechaCreacionDesc(10L))
+                .thenReturn(List.of(itinerario));
+        when(itinerarioGrupoRepo.save(itinerario)).thenReturn(itinerario);
+
+        ItinerarioGrupoDTO dto = service.eliminarDia(1L, 10L, 2);
+
+        assertEquals(2, dto.duracionDias());
+        assertEquals(itinerario.getFechaInicio().plusDays(1), dto.fechaFin());
+        List<Integer> dias = dto.items().stream().map(ItemItinerarioGrupoDTO::dia).sorted().toList();
+        assertEquals(List.of(1, 2), dias);
+        assertTrue(dto.items().stream().noneMatch(i -> i.id().equals(51L)));
+        verify(itinerarioGrupoRepo).save(itinerario);
+    }
+
+    @Test
+    void eliminarUltimoDia_borraActividadesYAcortaDuracion() {
+        Usuario lider = usuario(1L, "Ana");
+        Grupo grupo = grupo(10L, lider);
+        ItinerarioGrupo itinerario = itinerario(grupo, lider);
+        ItemItinerarioGrupo itemDia3 = itemConDia(52L, itinerario, lider, EstadoItemItinerarioGrupo.CONFIRMADO, 3);
+        itinerario.getItems().add(itemDia3);
+
+        when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 1L))
+                .thenReturn(Optional.of(miembro(grupo, lider, RolGrupo.CREADOR)));
+        when(itinerarioGrupoRepo.findByGrupo_IdGrupoOrderByFechaCreacionDesc(10L))
+                .thenReturn(List.of(itinerario));
+        when(itinerarioGrupoRepo.save(itinerario)).thenReturn(itinerario);
+
+        ItinerarioGrupoDTO dto = service.eliminarDia(1L, 10L, 3);
+
+        assertEquals(2, dto.duracionDias());
+        assertTrue(dto.items().isEmpty());
+        verify(itinerarioGrupoRepo).save(itinerario);
+    }
+
+    @Test
+    void eliminarUnicoDia_dejaItinerarioVacioConDuracionMinima() {
+        Usuario lider = usuario(1L, "Ana");
+        Grupo grupo = grupo(10L, lider);
+        ItinerarioGrupo itinerario = itinerarioConDuracion(grupo, lider, 1);
+        ItemItinerarioGrupo itemDia1 = itemConDia(50L, itinerario, lider, EstadoItemItinerarioGrupo.CONFIRMADO, 1);
+        itinerario.getItems().add(itemDia1);
+
+        when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 1L))
+                .thenReturn(Optional.of(miembro(grupo, lider, RolGrupo.CREADOR)));
+        when(itinerarioGrupoRepo.findByGrupo_IdGrupoOrderByFechaCreacionDesc(10L))
+                .thenReturn(List.of(itinerario));
+        when(itinerarioGrupoRepo.save(itinerario)).thenReturn(itinerario);
+
+        ItinerarioGrupoDTO dto = service.eliminarDia(1L, 10L, 1);
+
+        assertEquals(1, dto.duracionDias());
+        assertEquals(itinerario.getFechaInicio(), dto.fechaFin());
+        assertTrue(dto.items().isEmpty());
+        verify(itinerarioGrupoRepo).save(itinerario);
+    }
+
+    @Test
+    void eliminarDia_noCreadorLanzaForbidden() {
+        Usuario lider = usuario(1L, "Ana");
+        Usuario miembro = usuario(2L, "Luis");
+        Grupo grupo = grupo(10L, lider);
+
+        when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 2L))
+                .thenReturn(Optional.of(miembro(grupo, miembro, RolGrupo.MIEMBRO)));
+
+        assertThrows(ForbiddenException.class, () -> service.eliminarDia(2L, 10L, 1));
+        verify(itinerarioGrupoRepo, never()).save(any());
+    }
+
+    @Test
+    void eliminarDiaInvalido_lanzaBadRequest() {
+        Usuario lider = usuario(1L, "Ana");
+        Grupo grupo = grupo(10L, lider);
+        ItinerarioGrupo itinerario = itinerario(grupo, lider);
+
+        when(miembroRepo.findByGrupo_IdGrupoAndUsuario_IdUsuario(10L, 1L))
+                .thenReturn(Optional.of(miembro(grupo, lider, RolGrupo.CREADOR)));
+        when(itinerarioGrupoRepo.findByGrupo_IdGrupoOrderByFechaCreacionDesc(10L))
+                .thenReturn(List.of(itinerario));
+
+        assertThrows(BadRequestException.class, () -> service.eliminarDia(1L, 10L, 5));
+        assertThrows(BadRequestException.class, () -> service.eliminarDia(1L, 10L, 0));
+        verify(itinerarioGrupoRepo, never()).save(any());
     }
 
     /* ---------------- helpers ---------------- */
@@ -281,26 +410,36 @@ class ServiceItinerarioGrupoTest {
     }
 
     private ItinerarioGrupo itinerario(Grupo grupo, Usuario creador) {
+        return itinerarioConDuracion(grupo, creador, 3);
+    }
+
+    private ItinerarioGrupo itinerarioConDuracion(Grupo grupo, Usuario creador, int duracionDias) {
+        LocalDate inicio = LocalDate.now();
         return ItinerarioGrupo.builder()
                 .idItinerarioGrupo(99L)
                 .grupo(grupo)
                 .creador(creador)
                 .titulo("Compartido")
                 .provincia(Provincia.MENDOZA)
-                .fechaInicio(LocalDate.now())
-                .fechaFin(LocalDate.now().plusDays(2))
-                .duracionDias(3)
+                .fechaInicio(inicio)
+                .fechaFin(inicio.plusDays(duracionDias - 1L))
+                .duracionDias(duracionDias)
                 .fechaCreacion(LocalDateTime.now())
                 .build();
     }
 
     private ItemItinerarioGrupo item(Long id, ItinerarioGrupo itinerario, Usuario propuestoPor,
                                      EstadoItemItinerarioGrupo estado) {
+        return itemConDia(id, itinerario, propuestoPor, estado, 1);
+    }
+
+    private ItemItinerarioGrupo itemConDia(Long id, ItinerarioGrupo itinerario, Usuario propuestoPor,
+                                           EstadoItemItinerarioGrupo estado, int dia) {
         return ItemItinerarioGrupo.builder()
                 .id(id)
                 .itinerarioGrupo(itinerario)
                 .nombreActividad("Actividad")
-                .dia(1)
+                .dia(dia)
                 .estado(estado)
                 .propuestoPor(propuestoPor)
                 .fechaCreacion(LocalDateTime.now())

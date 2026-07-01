@@ -79,6 +79,46 @@ public class ServiceItinerarioGrupo {
     }
 
     /* ---------------------------------------------------------------- *
+     *  DELETE /grupos/{idGrupo}/itinerario/dias/{dia}
+     * ---------------------------------------------------------------- */
+
+    @Transactional
+    public ItinerarioGrupoDTO eliminarDia(Long idUsuario, Long idGrupo, Integer dia) {
+        verificarCreador(idGrupo, idUsuario);
+        ItinerarioGrupo itinerario = obtenerVigente(idGrupo);
+
+        int duracionActual = itinerario.getDuracionDias() == null ? 1 : itinerario.getDuracionDias();
+        if (dia == null || dia < 1 || dia > duracionActual) {
+            throw new BadRequestException("Día inválido: " + dia);
+        }
+
+        // 1) Borrar las actividades del día (orphanRemoval elimina asistencias en cascada).
+        itinerario.getItems().removeIf(item -> item.getDia().equals(dia));
+
+        // 2) Re-numerar los días posteriores.
+        itinerario.getItems().stream()
+                .filter(item -> item.getDia() > dia)
+                .forEach(item -> item.setDia(item.getDia() - 1));
+
+        // 3) Acortar la duración, siempre dejando al menos un día.
+        int nuevaDuracion = Math.max(duracionActual - 1, 1);
+        itinerario.setDuracionDias(nuevaDuracion);
+        sincronizarFechaFin(itinerario);
+
+        itinerarioGrupoRepo.save(itinerario);
+        return armarDetalle(itinerario, idGrupo, idUsuario, true);
+    }
+
+    /**
+     * Mantiene la invariante {@code fechaFin = fechaInicio + duracionDias - 1}.
+     */
+    private void sincronizarFechaFin(ItinerarioGrupo itinerario) {
+        int dias = Math.max(itinerario.getDuracionDias() == null ? 1 : itinerario.getDuracionDias(), 1);
+        itinerario.setDuracionDias(dias);
+        itinerario.setFechaFin(itinerario.getFechaInicio().plusDays(dias - 1L));
+    }
+
+    /* ---------------------------------------------------------------- *
      *  POST /grupos/{idGrupo}/itinerario/items
      * ---------------------------------------------------------------- */
 
@@ -203,13 +243,19 @@ public class ServiceItinerarioGrupo {
     public ItemItinerarioGrupoDTO togglearAsistencia(Long idUsuario, Long idGrupo, Long idItem, boolean asiste) {
         MiembroGrupo miembro = verificarMiembro(idGrupo, idUsuario);
         ItinerarioGrupo itinerario = obtenerVigente(idGrupo);
-        ItemItinerarioGrupo item = buscarItem(idItem, itinerario.getIdItinerarioGrupo());
+        // Lock pesimista sobre el item para serializar upserts concurrentes de
+        // asistencia (mismo item, distintos usuarios o el mismo usuario muy rápido).
+        ItemItinerarioGrupo item = itemRepo.findLockedByIdAndItinerarioGrupo_IdItinerarioGrupo(
+                idItem, itinerario.getIdItinerarioGrupo())
+                .orElseThrow(() -> new ResourceNotFoundException("Actividad no encontrada en este itinerario: " + idItem));
 
         if (item.getEstado() != EstadoItemItinerarioGrupo.CONFIRMADO) {
             throw new BadRequestException("No se puede marcar asistencia de una actividad todavía no confirmada");
         }
 
-        // Upsert por (item, usuario), mismo patrón que el voto de una encuesta.
+        // Upsert por (item, usuario). El lock sobre el item evita la condición de
+        // carrera que provocaba violaciones de unique constraint cuando varios
+        // miembros presionaban "voy"/"no voy" simultáneamente.
         AsistenciaItemGrupo asistencia = asistenciaRepo
                 .findByItem_IdAndUsuario_IdUsuario(idItem, idUsuario)
                 .orElseGet(() -> AsistenciaItemGrupo.builder()

@@ -344,6 +344,25 @@ public class ControllerGrupo {
         return ResponseEntity.ok(serviceItinerarioGrupo.actualizarFechaInicio(idUsuario, idGrupo, request));
     }
 
+    @DeleteMapping("/{idGrupo}/itinerario/dias/{dia}")
+    @Operation(summary = "Eliminar un día del itinerario (solo creador)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Día eliminado"),
+            @ApiResponse(responseCode = "400", description = "Día inválido",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "No es creador",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Itinerario no encontrado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<ItinerarioGrupoDTO> eliminarDiaItinerario(
+            @PathVariable Long idGrupo,
+            @PathVariable Integer dia,
+            Authentication authentication) {
+        Long idUsuario = authUtils.getIdUsuarioAutenticado(authentication);
+        return ResponseEntity.ok(serviceItinerarioGrupo.eliminarDia(idUsuario, idGrupo, dia));
+    }
+
     @GetMapping("/{idGrupo}/itinerario")
     @Operation(summary = "Ver el itinerario compartido del grupo (el del último ganador)")
     @ApiResponses({
